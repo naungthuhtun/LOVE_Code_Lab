@@ -2,36 +2,48 @@
 <html lang="my">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MM GOLDEN - ELITE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MM GOLDEN - Myanmar Earn Money App</title>
     
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-analytics.js";
-        import { getDatabase, ref, set, get, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-database.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
-
+        import { getDatabase, ref, set, get, update, remove, query, orderByChild, limitToFirst, push } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-database.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
+        
         const firebaseConfig = {
-            apiKey: "AIzaSyBz1BAFK_Hy-3kdyy5waa990FxFt0lsGr4",
-            authDomain: "mm-golden.firebaseapp.com",
-            projectId: "mm-golden",
-            storageBucket: "mm-golden.firebasestorage.app",
-            messagingSenderId: "188363716675",
-            appId: "1:188363716675:web:4692238a5c64572feefcf6",
-            measurementId: "G-8LNQ3H2GH5"
+            apiKey: "AIzaSyAou0HLlJEhcarQw0FocghOPw9AAMsZlq8",
+            authDomain: "mm-golden-game.firebaseapp.com",
+            projectId: "mm-golden-game",
+            storageBucket: "mm-golden-game.firebasestorage.app",
+            messagingSenderId: "502185650154",
+            appId: "1:502185650154:web:8419088df32a6e29a57493",
+            measurementId: "G-3K0MEYCQQP"
         };
 
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
         const database = getDatabase(app);
         const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
         
-        // Make Firebase available globally
-        window.firebaseApp = app;
+        // Make available globally
         window.firebaseDatabase = database;
         window.firebaseAuth = auth;
-        window.firebaseAnalytics = analytics;
+        window.firebaseGoogleProvider = googleProvider;
+        window.firebaseSignInWithPopup = signInWithPopup;
+        window.firebaseOnAuthStateChanged = onAuthStateChanged;
+        window.firebaseSignOut = signOut;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseUpdate = update;
+        window.firebaseRemove = remove;
+        window.firebaseQuery = query;
+        window.firebaseOrderByChild = orderByChild;
+        window.firebaseLimitToFirst = limitToFirst;
+        window.firebasePush = push;
+        
+        console.log('✅ Firebase connected');
     </script>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -39,2184 +51,960 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pyidaungsu:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Pyidaungsu:wght@400;500;600;700&display=swap');
+        * { user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Pyidaungsu', sans-serif; 
-            background: linear-gradient(135deg, #0a0e1a 0%, #050810 100%);
+            background: #0a0e1a;
             color: white; 
             overflow-x: hidden;
             min-height: 100vh;
         }
-        .section { 
-            display: none; 
-            padding-bottom: 120px; 
-            animation: fadeIn 0.3s ease; 
-        }
-        .section.active { 
-            display: block; 
-        }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(10px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
+        
+        .section { display: none; padding-bottom: 120px; animation: fadeInUp 0.4s ease; }
+        .section.active { display: block; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
         .gold-card { 
             background: linear-gradient(145deg, #1a1f33, #0f1424);
             border: 1px solid rgba(251, 191, 36, 0.2);
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
+            border-radius: 24px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease;
         }
+        .gold-card:hover { transform: translateY(-2px); border-color: rgba(251, 191, 36, 0.4); }
+        
         .btn-yellow { 
             background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-            color: black; 
-            font-weight: 900; 
-            border-radius: 12px; 
-            transition: all 0.3s ease;
+            color: #0a0e1a; 
+            font-weight: 800; 
+            border-radius: 16px; 
+            transition: all 0.2s ease;
             border: none;
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
         }
-        .btn-yellow:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-        }
-        .btn-yellow:active { 
-            transform: scale(0.98); 
-        }
-        .nav-active { 
-            color: #fbbf24 !important; 
-            border-top: 3px solid #fbbf24;
-            background: rgba(245, 158, 11, 0.1);
-            border-radius: 8px 8px 0 0;
-        }
+        .btn-yellow:active { transform: scale(0.97); }
+        .btn-yellow:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+        
+        .nav-active { color: #fbbf24 !important; border-top: 3px solid #fbbf24; background: rgba(245, 158, 11, 0.1); border-radius: 12px 12px 0 0; }
+        
         input, textarea, select { 
-            background: rgba(30, 41, 59, 0.8) !important; 
-            border: 2px solid rgba(251, 191, 36, 0.3) !important; 
+            background: #1e293b !important; 
+            border: 1px solid #334155 !important; 
             color: #fbbf24 !important; 
-            padding: 14px; 
-            border-radius: 12px; 
+            padding: 14px 16px; 
+            border-radius: 16px; 
             width: 100%; 
             margin-bottom: 12px;
-            font-size: 14px;
-            transition: all 0.3s ease;
         }
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: #fbbf24 !important;
-            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
-        }
-        #wheelCanvas { 
-            transition: transform 4s cubic-bezier(0.1, 0, 0.1, 1); 
-        }
-        .status-pending { background: #f59e0b; color: black; }
-        .status-approved { background: #10b981; color: white; }
-        .status-rejected { background: #ef4444; color: white; }
+        input:focus, textarea:focus, select:focus { border-color: #fbbf24 !important; outline: none; }
         
-        /* Withdraw button styles */
         .withdraw-btn { 
-            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
             color: white;
-            border: none;
-            border-radius: 14px;
+            border-radius: 18px;
             padding: 18px;
             font-weight: bold;
-            font-size: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
             width: 100%;
-            margin-top: 16px;
-            box-shadow: 0 4px 20px rgba(5, 150, 105, 0.3);
         }
-        .withdraw-btn:hover {
-            background: linear-gradient(135deg, #047857 0%, #065f46 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(5, 150, 105, 0.4);
-        }
-        .withdraw-btn:active {
-            transform: translateY(1px);
-            box-shadow: 0 2px 15px rgba(5, 150, 105, 0.2);
-        }
-        .withdraw-btn:disabled {
-            background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-            opacity: 0.7;
-        }
+        .withdraw-btn:disabled { background: #4b5563; cursor: not-allowed; }
         
-        /* USD display styles */
-        .usd-display {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
-            border: 2px solid rgba(251, 191, 36, 0.25);
-            border-radius: 14px;
-            padding: 16px;
-            text-align: center;
-            margin-top: 12px;
-            backdrop-filter: blur(10px);
-        }
-        .usd-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #10b981;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
+        .progress-bar { width: 100%; height: 8px; background: #334155; border-radius: 20px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 20px; transition: width 0.3s ease; }
         
-        /* Loading animation */
-        .loading-spinner {
-            border: 3px solid rgba(251, 191, 36, 0.1);
-            border-radius: 50%;
-            border-top: 3px solid #fbbf24;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .gradient-text { background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        /* Pulse animation for new features */
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        #gameCanvas {
+            background: linear-gradient(180deg, #1a472a 0%, #0d2818 100%);
+            border-radius: 20px;
+            display: block;
+            margin: 0 auto;
+            cursor: pointer;
         }
-        .pulse {
-            animation: pulse 2s infinite;
-        }
+        .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { max-width: 350px; width: 90%; animation: pop 0.3s ease; }
+        @keyframes pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         
-        /* Glass effect */
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
+        .admin-table { width: 100%; font-size: 10px; border-collapse: collapse; }
+        .admin-table th, .admin-table td { padding: 8px 6px; border-bottom: 1px solid rgba(251,191,36,0.15); }
+        .admin-table th { color: #fbbf24; background: rgba(0,0,0,0.3); }
+        .user-row:hover { background: rgba(251,191,36,0.1); cursor: pointer; }
         
-        /* Gradient text */
-        .gradient-text {
-            background: linear-gradient(45deg, #fbbf24, #f59e0b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+        .activity-log { font-size: 9px; max-height: 300px; overflow-y: auto; }
+        .activity-item { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        
+        .withdrawal-item { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; margin-bottom: 8px; border-left: 3px solid #fbbf24; }
+        .status-pending { color: #fbbf24; }
+        .status-approved { color: #10b981; }
+        .status-rejected { color: #ef4444; }
+        
+        .quiz-list, .task-list { max-height: 200px; overflow-y: auto; }
+        .quiz-item, .task-item { background: rgba(0,0,0,0.25); padding: 8px; margin-bottom: 6px; border-radius: 10px; }
+        .completed-tasks-list { max-height: 180px; overflow-y: auto; border-top: 1px solid rgba(251,191,36,0.2); margin-top: 12px; padding-top: 12px; }
+        .completed-task-item { background: rgba(16,185,129,0.1); padding: 6px 10px; border-radius: 8px; margin-bottom: 5px; font-size: 11px; border-left: 2px solid #10b981; }
+        
+        .quiz-counter { background: #1e293b; border-radius: 20px; padding: 15px; margin-top: 15px; text-align: center; }
+        .counter-value { font-size: 32px; font-weight: bold; color: #fbbf24; }
+        .milestone-item { display: inline-block; background: rgba(0,0,0,0.35); padding: 5px 12px; border-radius: 30px; margin: 4px; font-size: 10px; }
+        .milestone-completed { background: rgba(16,185,129,0.25); border: 1px solid #10b981; color: #10b981; }
+        .milestone-pending { background: #334155; color: #94a3b8; }
+        .milestone-ready { background: rgba(245,158,11,0.3); border: 1px solid #f59e0b; color: #fbbf24; cursor: pointer; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #fbbf24; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="fixed top-0 w-full bg-[#0a0e1a]/90 backdrop-blur-xl p-4 z-50 border-b border-amber-500/20 shadow-xl">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-black gradient-text italic">MM GOLDEN</h1>
+<div class="fixed top-0 w-full bg-[#0a0e1a]/95 backdrop-blur-sm p-4 z-50 border-b border-amber-500/20">
+    <div class="max-w-md mx-auto">
+        <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-crown text-white text-lg"></i>
+                </div>
+                <h1 class="text-2xl font-black gradient-text">MM GOLDEN</h1>
+            </div>
             <div class="text-right">
-                <span id="total-pts" class="text-xl font-bold text-amber-400">0</span> 
-                <span class="text-[10px] text-amber-500 font-black">PTS</span>
+                <span id="total-pts" class="text-2xl font-bold text-amber-400">0</span> 
+                <span class="text-[10px] text-amber-500 font-bold">PTS</span>
+            </div>
+        </div>
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-user-circle text-amber-400"></i>
+                <span id="display-name" class="text-sm font-medium text-amber-300">Loading...</span>
+            </div>
+            <div class="flex gap-2">
+                <button id="google-login-btn" onclick="showGoogleLogin()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition">
+                    <i class="fab fa-google mr-1"></i> Login
+                </button>
+                <button onclick="showUserProfile()" class="text-xs text-blue-400 bg-blue-900/30 px-3 py-1.5 rounded-full hidden" id="profile-btn">
+                    <i class="fas fa-id-card"></i> Profile
+                </button>
+                <button id="admin-mode-btn" onclick="toggleAdminMode()" class="text-xs text-red-400 bg-red-900/30 px-3 py-1.5 rounded-full hidden">
+                    <i class="fas fa-user-shield"></i> Admin
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<main class="max-w-md mx-auto pt-28 px-4">
+
+    <!-- Home Section -->
+    <div id="sec-home" class="section active space-y-5">
+        <div class="gold-card p-6 text-center">
+            <div class="flex items-center justify-between mb-4">
+                <p class="text-xs text-amber-400 font-bold uppercase"><i class="fas fa-calendar-day mr-2"></i>Daily Bonus</p>
+                <div class="text-[10px] text-green-400 bg-green-900/30 px-3 py-1 rounded-full"><i class="fas fa-coins mr-1"></i>+100 PTS</div>
+            </div>
+            <div class="flex justify-center mb-6">
+                <div class="w-28 h-28 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full flex items-center justify-center border-2 border-amber-500/50">
+                    <i class="fas fa-gift text-5xl text-amber-400"></i>
+                </div>
+            </div>
+            <button id="daily-bonus-btn" onclick="claimDailyBonus()" class="w-full btn-yellow py-4 text-sm font-bold rounded-xl">
+                <i class="fas fa-play-circle mr-2"></i>Claim Daily Bonus
+            </button>
+            <p id="bonus-status" class="text-[10px] text-slate-500 mt-3">တစ်နေ့တစ်ကြိမ်သာ ရယူနိုင်ပါသည်။</p>
+        </div>
+
+        <div class="gold-card p-5 text-center">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-black/30 p-3 rounded-2xl"><p class="text-xs text-amber-300">Your Points</p><p id="current-points" class="text-2xl font-bold text-white">0</p></div>
+                <div class="bg-green-900/30 p-3 rounded-2xl"><p class="text-xs text-green-300">USD Value</p><p id="usd-equivalent" class="text-2xl font-bold text-green-400">$0.0000</p></div>
+            </div>
+            <p class="text-xs text-amber-300 mt-3">100,000 PTS = $1.00 USD</p>
+        </div>
+        
+        <div class="gold-card p-5">
+            <div class="flex justify-between mb-2"><span class="text-sm font-bold text-white"><i class="fas fa-chart-line mr-2 text-amber-400"></i>Withdrawal Progress</span><span class="text-sm font-bold text-amber-400">100,000 PTS</span></div>
+            <div class="progress-bar"><div id="withdraw-progress-fill" class="progress-fill" style="width: 0%"></div></div>
+            <div class="flex justify-between text-[10px] text-slate-500 mt-2"><span>လက်ရှိ:</span><span id="withdraw-progress-current" class="text-amber-300 font-bold">0</span><span>PTS</span></div>
+        </div>
+
+        <div class="gold-card p-6">
+            <div class="flex items-center gap-3 mb-5"><i class="fas fa-trophy text-2xl text-amber-400"></i><h3 class="text-amber-400 font-bold text-lg">🏆 Top 5 Users</h3></div>
+            <div id="top-users-list" class="space-y-3"><div class="text-center py-4 text-slate-500">Loading...</div></div>
+        </div>
+
+        <button id="withdraw-home-btn" onclick="checkWithdrawEligibility()" class="w-full withdraw-btn py-5 text-lg font-bold rounded-xl">
+            <i class="fas fa-wallet mr-2"></i> ငွေထုတ်ယူရန်
+        </button>
+    </div>
+
+    <!-- Quiz Section -->
+    <div id="sec-quiz" class="section space-y-5">
+        <div class="gold-card p-6 text-center">
+            <div class="flex justify-center mb-3"><div class="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center"><i class="fas fa-brain text-3xl text-purple-400"></i></div></div>
+            <h3 class="text-white font-bold text-xl mb-2">Daily Quiz Challenge</h3>
+            <div id="quiz-q-display" class="bg-slate-800/80 p-6 rounded-2xl mb-4 text-lg font-medium text-white">Loading...</div>
+            <input type="text" id="quiz-ans-input" placeholder="အဖြေရိုက်ထည့်ပါ" class="text-center">
+            <button onclick="checkQuiz()" class="btn-yellow py-3 px-8 mt-3 rounded-xl text-lg font-bold">Submit</button>
+        </div>
+
+        <div class="quiz-counter">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-sm text-amber-300"><i class="fas fa-chart-line mr-2"></i>စုစုပေါင်းဖြေဆိုပြီး</span>
+                <span class="counter-value" id="total-quiz-count">0</span>
+            </div>
+            <div class="flex flex-wrap justify-center gap-2">
+                <div class="milestone-item" id="milestone-50">50 → 50 PTS</div>
+                <div class="milestone-item" id="milestone-100">100 → 100 PTS</div>
+                <div class="milestone-item" id="milestone-200">200 → 150 PTS</div>
+                <div class="milestone-item" id="milestone-500">500 → 550 PTS</div>
+            </div>
+        </div>
+        
+        <div class="gold-card p-5">
+            <div class="flex justify-between items-center mb-4"><div class="flex items-center gap-2"><div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center"><i class="fas fa-gamepad text-purple-400 text-xl"></i></div><h3 class="text-amber-400 font-bold text-lg">🎮 Coin Runner</h3></div><span class="text-xs bg-amber-500/20 px-3 py-1 rounded-full">1 Coin = 10 PTS</span></div>
+            <div class="text-center mb-3"><span id="game-remaining" class="text-sm bg-slate-800 px-4 py-1.5 rounded-full">🎮 ယနေ့ကျန်ပွဲရေ: 5</span></div>
+            <canvas id="gameCanvas" width="340" height="420" style="width:100%; height:auto; max-width:340px"></canvas>
+            <div class="flex justify-between mt-4 gap-3">
+                <div class="bg-black/50 px-5 py-2 rounded-xl flex-1 text-center"><span class="text-[10px] text-slate-500">Coins</span><p id="game-coins" class="text-2xl font-bold text-amber-400">0</p></div>
+                <div class="bg-black/50 px-5 py-2 rounded-xl flex-1 text-center"><span class="text-[10px] text-slate-500">Best</span><p id="game-best" class="text-2xl font-bold text-green-400">0</p></div>
+                <button id="game-play-btn" onclick="startGame()" class="btn-yellow px-5 py-2 text-sm font-bold rounded-xl"><i class="fas fa-play mr-1"></i> Play</button>
             </div>
         </div>
     </div>
 
-    <main class="max-w-md mx-auto pt-24 px-4">
-
-        <!-- Home Section -->
-        <div id="sec-home" class="section active space-y-6">
-            <!-- Wheel Section -->
-            <div class="gold-card p-6 text-center">
-                <div class="flex items-center justify-between mb-4">
-                    <p class="text-[12px] text-amber-400 font-bold uppercase tracking-widest">
-                        <i class="fas fa-sync-alt mr-2"></i>Daily Spins: 
-                        <span id="spin-count" class="text-amber-300">0</span>/5
-                    </p>
-                    <div class="text-[10px] text-green-400 bg-green-900/30 px-2 py-1 rounded-full">
-                        <i class="fas fa-coins mr-1"></i>Win Points
-                    </div>
+    <!-- Invite Section -->
+    <div id="sec-invite" class="section space-y-5">
+        <div class="gold-card p-6 text-center">
+            <div class="flex justify-center mb-4"><div class="w-20 h-20 bg-gradient-to-br from-green-500/30 to-emerald-600/30 rounded-2xl flex items-center justify-center"><i class="fas fa-users text-3xl text-green-400"></i></div></div>
+            <h3 class="text-white font-bold text-xl mb-2">သူငယ်ချင်းဖိတ်ခေါ်ပါ</h3>
+            <p class="text-xs text-slate-500 mb-4">သင့်မိတ်ဆက်ကုဒ်ကို မျှဝေပါ</p>
+            <div class="mb-6 bg-gradient-to-r from-amber-900/20 to-orange-900/20 p-5 rounded-2xl">
+                <div class="inline-flex items-center gap-4 p-4 bg-black/40 rounded-xl">
+                    <div><div class="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center"><i class="fas fa-user-plus text-green-400 text-xl"></i></div><p class="text-sm font-bold">1 ယောက် ဖိတ်</p></div>
+                    <div class="text-3xl text-amber-400">=</div>
+                    <div><div class="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center"><i class="fas fa-coins text-amber-400 text-xl"></i></div><p class="text-sm font-bold">500 PTS</p></div>
                 </div>
-                
-                <div class="relative flex justify-center mb-6">
-                    <div class="absolute -top-2 z-10 text-red-400 text-4xl animate-bounce">
-                        <i class="fas fa-caret-down"></i>
-                    </div>
-                    <canvas id="wheelCanvas" width="260" height="260"></canvas>
-                </div>
-                
-                <button id="spin-btn" onclick="handleWheelSpin()" class="w-full btn-yellow py-4 text-sm font-bold">
-                    <i class="fas fa-play-circle mr-2"></i>Spin Wheel (Watch Ad)
-                </button>
             </div>
+            <div class="relative mb-4">
+                <div id="ref-link" class="text-xs break-all p-4 bg-slate-800 rounded-xl border border-amber-500/30 font-mono text-amber-300">Loading...</div>
+                <button onclick="copyRef()" class="absolute top-2 right-2 btn-yellow px-3 py-1.5 text-xs rounded-lg">Copy</button>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-slate-800/70 p-4 rounded-xl text-center"><p class="text-2xl font-bold text-amber-400" id="ref-count">0</p><p class="text-[9px] text-slate-500">ဖိတ်ခေါ်ထားသူ</p></div>
+                <div class="bg-emerald-900/30 p-4 rounded-xl text-center"><p class="text-2xl font-bold text-green-400" id="ref-earned">0</p><p class="text-[9px] text-green-400">ရရှိပြီး PTS</p></div>
+            </div>
+            <div id="ref-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
 
-            <!-- Points to USD Conversion Display -->
-            <div class="usd-display pulse">
-                <div class="flex items-center justify-center gap-2 mb-3">
-                    <i class="fas fa-exchange-alt text-amber-400 text-lg"></i>
-                    <p class="text-[12px] text-amber-300 uppercase font-bold">💰 Point to USD Conversion</p>
-                </div>
+    <!-- Tasks Section -->
+    <div id="sec-tasks" class="section space-y-5">
+        <div id="task-list-display" class="space-y-3"></div>
+        <div class="gold-card p-4">
+            <h4 class="text-amber-400 font-bold text-sm mb-3"><i class="fas fa-check-circle mr-2 text-green-400"></i>ပြီးဆုံးပြီး Task များ</h4>
+            <div id="completed-tasks-list" class="completed-tasks-list"></div>
+        </div>
+    </div>
+
+    <!-- Profile Section -->
+    <div id="sec-profile" class="section space-y-5">
+        <div class="gold-card p-6">
+            <div class="flex items-center gap-3 mb-6"><div class="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center"><i class="fas fa-id-card text-2xl text-blue-400"></i></div><div><h3 class="text-white font-bold text-xl">My Profile</h3></div></div>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-xl"><span class="text-slate-500 text-sm">User ID:</span><code id="profile-user-id" class="text-amber-300 text-sm font-mono">-</code><button onclick="copyUserId()" class="text-xs text-blue-400 bg-blue-900/30 px-2 py-1 rounded">Copy</button></div>
+                <div class="flex justify-between p-3 bg-slate-800/50 rounded-xl"><span class="text-slate-500">Name:</span><span id="profile-name" class="text-white font-medium">-</span></div>
+                <div class="flex justify-between p-3 bg-slate-800/50 rounded-xl"><span class="text-slate-500">Total Earned:</span><span id="profile-total" class="text-green-400 font-bold text-lg">0</span></div>
+            </div>
+        </div>
+        <div class="gold-card p-6"><h3 class="text-white font-bold text-lg mb-4"><i class="fas fa-history mr-2 text-amber-400"></i>Withdrawal History</h3><div id="user-withdrawal-history" class="space-y-2 max-h-64 overflow-y-auto"></div></div>
+        <div class="gold-card p-6"><h3 class="text-white font-bold text-lg mb-4"><i class="fas fa-list-alt mr-2 text-amber-400"></i>My Activity</h3><div id="user-activity-log-personal" class="activity-log max-h-80 overflow-y-auto"></div></div>
+        <button onclick="showSec('sec-home')" class="w-full text-slate-500 mt-2 py-3">← Back to Home</button>
+    </div>
+
+    <!-- Withdraw Section -->
+    <div id="sec-withdraw" class="section">
+        <div class="gold-card p-6">
+            <div class="flex items-center gap-3 mb-6"><div class="w-14 h-14 bg-green-600/20 rounded-2xl flex items-center justify-center"><i class="fas fa-university text-2xl text-green-400"></i></div><div><h3 class="text-white font-bold text-xl">Withdrawal</h3><p class="text-[10px] text-green-400">ငွေထုတ်ယူရန် (အနည်းဆုံး 100,000 PTS)</p></div></div>
+            <div class="mb-6 p-5 bg-gradient-to-r from-amber-900/20 to-amber-800/20 rounded-2xl">
+                <div class="flex justify-between mb-3"><span class="text-amber-300">လက်ရှိ Point</span><span id="withdraw-current-points" class="text-2xl text-amber-400 font-bold">0</span></div>
+                <div class="flex justify-between mb-4"><span class="text-green-300">USD တန်ဖိုး</span><span id="withdraw-usd-value" class="text-2xl text-green-400 font-bold">$0.0000</span></div>
+                <div class="progress-bar mt-2"><div id="withdraw-progress-fill-modal" class="progress-fill" style="width:0%"></div></div>
+            </div>
+            <div class="mb-6"><label class="block mb-3 text-sm text-amber-300 font-medium"><i class="fas fa-credit-card mr-2"></i>ငွေထုတ်နည်းလမ်း ရွေးပါ</label>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-black/30 p-3 rounded-lg">
-                        <p class="text-xs text-amber-300 mb-1">Your Points</p>
-                        <p id="current-points" class="text-lg font-bold text-white">0</p>
-                        <p class="text-[10px] text-slate-400">PTS</p>
-                    </div>
-                    <div class="bg-green-900/30 p-3 rounded-lg">
-                        <p class="text-xs text-green-300 mb-1">USD Value</p>
-                        <p id="usd-equivalent" class="usd-value">$0.0000</p>
-                        <p class="text-[10px] text-green-400">USD</p>
-                    </div>
-                </div>
-                <p class="text-[11px] text-amber-300 mt-4">
-                    <i class="fas fa-info-circle mr-1"></i>10,000 PTS = $1.0000 USD
-                </p>
-            </div>
-
-            <!-- Top 5 Users Section -->
-            <div class="gold-card p-6">
-                <div class="flex items-center justify-between mb-5">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-trophy text-amber-400"></i>
-                        </div>
-                        <h3 class="text-amber-400 font-bold text-base">🏆 Top 5 Users</h3>
-                    </div>
-                    <span class="text-[10px] text-slate-400 bg-black/30 px-2 py-1 rounded-full">
-                        Points Ranking
-                    </span>
-                </div>
-                <div id="top-users-list" class="space-y-3">
-                    <div class="flex justify-center py-6">
-                        <div class="loading-spinner"></div>
-                    </div>
+                    <label class="cursor-pointer"><input type="radio" name="withdraw-method" value="kapy" checked class="hidden peer" onchange="updateWithdrawMethod('kapy')"><div class="p-4 text-center border border-amber-500/30 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-500/10 transition"><i class="fas fa-wallet text-blue-400 text-2xl"></i><div class="font-bold text-sm mt-1">Kpay</div></div></label>
+                    <label class="cursor-pointer"><input type="radio" name="withdraw-method" value="wave" class="hidden peer" onchange="updateWithdrawMethod('wave')"><div class="p-4 text-center border border-amber-500/30 rounded-xl peer-checked:border-green-500 peer-checked:bg-green-500/10 transition"><i class="fas fa-mobile-alt text-green-400 text-2xl"></i><div class="font-bold text-sm mt-1">Wave</div></div></label>
                 </div>
             </div>
-
-            <!-- History Button -->
-            <button onclick="showSec('sec-history')" class="w-full gold-card p-5 flex justify-between items-center 
-                       hover:border-amber-500/50 transition-all duration-300 group">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center 
-                                group-hover:bg-amber-500/30 transition-colors">
-                        <i class="fas fa-history text-amber-400 text-lg"></i>
-                    </div>
-                    <div class="text-left">
-                        <span class="text-sm font-bold block">Point မှတ်တမ်း</span>
-                        <span class="text-[10px] text-slate-400">View your point history</span>
-                    </div>
-                </div>
-                <i class="fas fa-chevron-right text-xs text-slate-400 group-hover:text-amber-400"></i>
-            </button>
-
-            <!-- Withdraw Button -->
-            <button id="withdraw-home-btn" onclick="checkWithdrawEligibility()" 
-                    class="w-full withdraw-btn py-5 flex justify-center items-center gap-3 mt-4">
-                <i class="fas fa-wallet text-lg"></i>
-                <span class="text-base font-bold">ငွေထုတ်ယူရန်နေရာ</span>
-            </button>
+            <input type="text" id="w-name" placeholder="အမည်">
+            <input type="text" id="w-phone" placeholder="ဖုန်းနံပါတ် (09xxxxxxxxx)">
+            <input type="number" id="w-amt" placeholder="Point ပမာဏ (အနည်းဆုံး 100,000)" oninput="updateWithdrawUSD()">
+            <button id="submit-withdraw-btn" onclick="submitWithdraw()" class="w-full withdraw-btn py-4 mt-4 rounded-xl text-lg font-bold">ထုတ်ယူရန်တောင်းဆိုမည်</button>
+            <button onclick="showSec('sec-home')" class="w-full text-slate-500 mt-4 py-3">← Back</button>
         </div>
+    </div>
 
-        <!-- Invite Section -->
-        <div id="sec-invite" class="section space-y-6">
-            <div class="gold-card p-6">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl 
-                                flex items-center justify-center shadow-lg">
-                        <i class="fas fa-users text-xl text-white"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-amber-400 font-bold text-lg">သူငယ်ချင်းဖိတ်ခေါ်ခြင်း</h3>
-                        <p class="text-[10px] text-slate-400">Earn 100 PTS per friend</p>
-                    </div>
-                </div>
-                
-                <!-- How it works -->
-                <div class="mb-6 bg-gradient-to-r from-amber-900/20 to-orange-900/20 p-5 rounded-2xl 
-                            border border-amber-500/30">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-8 h-8 bg-green-500/30 rounded-full flex items-center justify-center">
-                            <i class="fas fa-gift text-green-400"></i>
-                        </div>
-                        <h4 class="text-amber-300 font-bold text-sm">🎯 ဖိတ်ခေါ်ခြင်း စည်းမျဉ်း</h4>
-                    </div>
-                    <div class="text-center">
-                        <div class="inline-flex items-center gap-4 p-4 bg-black/40 rounded-xl">
-                            <div class="text-center">
-                                <div class="w-14 h-14 bg-green-500/20 rounded-full flex items-center justify-center 
-                                            mx-auto mb-2 border-2 border-green-500/50">
-                                    <i class="fas fa-user-plus text-green-400 text-xl"></i>
-                                </div>
-                                <p class="text-base font-bold text-white">1 ယောက် ဖိတ်</p>
-                            </div>
-                            <div class="text-2xl text-amber-400">=</div>
-                            <div class="text-center">
-                                <div class="w-14 h-14 bg-amber-500/20 rounded-full flex items-center justify-center 
-                                            mx-auto mb-2 border-2 border-amber-500/50">
-                                    <i class="fas fa-coins text-amber-400 text-xl"></i>
-                                </div>
-                                <p class="text-base font-bold text-white">100 PTS</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Your Referral Link -->
-                <div class="mb-6">
-                    <p class="text-[11px] text-amber-300 uppercase font-bold mb-3 flex items-center gap-2">
-                        <i class="fas fa-link"></i> သင့်ဖိတ်ခေါ်စာလင့်ခ်
-                    </p>
-                    <div class="relative">
-                        <div id="ref-link" class="text-xs text-amber-100 break-all p-4 bg-slate-900/80 
-                                    rounded-xl border-2 border-amber-500/30 font-mono leading-relaxed">
-                            https://t.me/MMGoldenBot?start=${userId}
-                        </div>
-                        <button onclick="copyRef()" 
-                                class="absolute top-3 right-3 btn-yellow px-4 py-2 text-xs font-bold 
-                                       hover:scale-105 transition-transform">
-                            <i class="fas fa-copy mr-1"></i>Copy
-                        </button>
-                    </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="grid grid-cols-2 gap-4 mt-5">
-                        <button onclick="copyRef()" 
-                                class="w-full btn-yellow py-3 text-xs uppercase font-bold 
-                                       flex items-center justify-center gap-2">
-                            <i class="fas fa-copy"></i> Copy Link
-                        </button>
-                        <button onclick="shareRef()" 
-                                class="w-full bg-gradient-to-r from-blue-600 to-purple-600 
-                                       text-white py-3 text-xs uppercase rounded-xl font-bold 
-                                       flex items-center justify-center gap-2 hover:opacity-90">
-                            <i class="fas fa-share-alt"></i> Share
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Referral Stats -->
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-4 rounded-xl text-center 
-                                border border-slate-700">
-                        <p class="text-2xl font-bold text-amber-400" id="ref-count">0</p>
-                        <div class="flex items-center justify-center gap-2 mt-1">
-                            <i class="fas fa-user-friends text-[10px] text-slate-400"></i>
-                            <p class="text-[10px] text-slate-400">ဖိတ်ခေါ်ထားသူ</p>
-                        </div>
-                    </div>
-                    <div class="bg-gradient-to-br from-emerald-900/30 to-green-900/30 p-4 rounded-xl text-center 
-                                border border-green-800/30">
-                        <p class="text-2xl font-bold text-green-400" id="ref-earned">0</p>
-                        <div class="flex items-center justify-center gap-2 mt-1">
-                            <i class="fas fa-coins text-[10px] text-green-400"></i>
-                            <p class="text-[10px] text-green-400">ရရှိပြီး PTS</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Invited Friends List -->
-                <div class="mb-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-[11px] text-amber-300 uppercase font-bold flex items-center gap-2">
-                            <i class="fas fa-users"></i> ဖိတ်ခေါ်ထားသူများ
-                        </h4>
-                        <span class="text-[9px] text-slate-500 bg-black/30 px-2 py-1 rounded-full">
-                            Total: <span id="total-refs">0</span>
-                        </span>
-                    </div>
-                    <div id="ref-list" class="space-y-3 max-h-64 overflow-y-auto pr-2">
-                        <!-- List will be loaded here -->
-                    </div>
-                </div>
+    <!-- About & Admin Section -->
+    <div id="sec-about" class="section space-y-5">
+        <div class="gold-card p-6">
+            <div class="text-center mb-6"><div onclick="handleSecret()" class="inline-block cursor-pointer"><i class="fas fa-crown text-5xl text-amber-400 mb-2"></i><h3 class="text-2xl font-black gradient-text">MM GOLDEN ELITE</h3><p class="text-[9px] text-slate-500 mt-1">Click logo for admin access</p></div></div>
+            <div class="p-5 bg-blue-900/20 rounded-2xl">
+                <p class="text-amber-300 font-bold mb-3"><i class="fas fa-dollar-sign mr-2"></i>ငွေရှာနည်းများ</p>
+                <ul class="text-slate-300 text-sm space-y-2">
+                    <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>မေးခွန်းများဖြေဆိုခြင်း</li>
+                    <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Coin Runner ဂိမ်း (1 coin = 10 PTS, တစ်နေ့ 5 ပွဲသာ)</li>
+                    <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>သူငယ်ချင်းဖိတ်ခေါ်ခြင်း (+500 PTS)</li>
+                    <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>နေ့စဉ် Bonus (+100 PTS)</li>
+                </ul>
             </div>
-        </div>
-
-        <!-- Withdraw Section -->
-        <div id="sec-withdraw" class="section">
-            <div class="gold-card p-6">
-                <!-- Header -->
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl 
-                                flex items-center justify-center shadow-lg">
-                        <i class="fas fa-university text-xl text-white"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-white font-bold text-lg">Withdrawal</h3>
-                        <p class="text-[10px] text-green-400">ငွေထုတ်ယူရန်</p>
-                    </div>
-                </div>
-                
-                <!-- Current Balance Display -->
-                <div class="mb-6 p-5 bg-gradient-to-r from-amber-900/30 to-amber-800/20 rounded-2xl 
-                            border-2 border-amber-500/30">
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-coins text-amber-400"></i>
-                            <span class="text-sm text-amber-300">လက်ရှိ Point</span>
-                        </div>
-                        <span class="text-xl font-bold text-amber-400" id="withdraw-current-points">0</span>
-                    </div>
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-dollar-sign text-green-400"></i>
-                            <span class="text-sm text-green-300">USD တန်ဖိုး</span>
-                        </div>
-                        <span class="text-xl font-bold text-green-400" id="withdraw-usd-value">$0.0000</span>
-                    </div>
-                    <div class="pt-3 border-t border-amber-500/20">
-                        <p class="text-xs text-center text-amber-300">
-                            <i class="fas fa-info-circle mr-1"></i>10,000 PTS = $1.0000 USD
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Withdrawal Method Selection -->
-                <div class="mb-6">
-                    <label class="block mb-3 text-sm font-medium text-amber-300 flex items-center gap-2">
-                        <i class="fas fa-credit-card"></i> ငွေထုတ်နည်းလမ်း ရွေးပါ
-                    </label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="flex-1">
-                            <input type="radio" name="withdraw-method" value="kapy" checked 
-                                   class="hidden peer" onchange="updateWithdrawMethod('kapy')">
-                            <div class="p-4 text-center border-2 border-amber-500/30 rounded-xl cursor-pointer 
-                                        peer-checked:border-blue-500 peer-checked:bg-blue-500/10 
-                                        transition-all hover:border-amber-500">
-                                <div class="w-10 h-10 bg-blue-500/20 rounded-full flex items-center 
-                                            justify-center mx-auto mb-2">
-                                    <i class="fas fa-wallet text-blue-400 text-lg"></i>
-                                </div>
-                                <div class="font-bold text-sm">Kpay</div>
-                                <p class="text-[9px] text-slate-400 mt-1">ငွေထုတ်နည်း</p>
-                            </div>
-                        </label>
-                        <label class="flex-1">
-                            <input type="radio" name="withdraw-method" value="wave" 
-                                   class="hidden peer" onchange="updateWithdrawMethod('wave')">
-                            <div class="p-4 text-center border-2 border-amber-500/30 rounded-xl cursor-pointer 
-                                        peer-checked:border-green-500 peer-checked:bg-green-500/10 
-                                        transition-all hover:border-amber-500">
-                                <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center 
-                                            justify-center mx-auto mb-2">
-                                    <i class="fas fa-mobile-alt text-green-400 text-lg"></i>
-                                </div>
-                                <div class="font-bold text-sm">Wave</div>
-                                <p class="text-[9px] text-slate-400 mt-1">ငွေထုတ်နည်း</p>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-                
-                <!-- Withdrawal Form -->
-                <div class="space-y-4 mb-6">
-                    <div>
-                        <label class="text-[12px] text-amber-300 mb-2 block">
-                            <i class="fas fa-user mr-1"></i> အမည် (Name)
-                        </label>
-                        <input type="text" id="w-name" placeholder="သင့်အမည်ထည့်ပါ" 
-                               class="text-sm p-4">
-                    </div>
-                    
-                    <div>
-                        <label class="text-[12px] text-amber-300 mb-2 block">
-                            <i class="fas fa-phone mr-1"></i> ဖုန်းနံပါတ်
-                        </label>
-                        <input type="number" id="w-phone" placeholder="09xxxxxxxxx" 
-                               class="text-sm p-4">
-                    </div>
-                    
-                    <div>
-                        <label class="text-[12px] text-amber-300 mb-2 block">
-                            <i class="fas fa-coins mr-1"></i> Point ပမာဏ
-                        </label>
-                        <input type="number" id="w-amt" placeholder="အနည်းဆုံး 10,000" 
-                               class="text-sm p-4" oninput="updateWithdrawUSD()">
-                    </div>
-                </div>
-                
-                <!-- Selected Method Display -->
-                <div id="selected-method-display" 
-                     class="mb-4 p-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 
-                            rounded-xl border border-blue-500/30 text-center">
-                    <div class="flex items-center justify-center gap-3">
-                        <div class="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
-                            <i class="fas fa-wallet text-blue-400"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-slate-300">ထုတ်ယူမည့်နည်းလမ်း</p>
-                            <p class="font-bold text-sm text-amber-300">Kpay</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Selected Amount USD Value -->
-                <div id="selected-amount-usd" 
-                     class="mb-4 p-4 bg-gradient-to-r from-green-500/10 to-emerald-600/10 
-                            rounded-xl border border-green-500/30 text-center hidden">
-                    <div class="flex items-center justify-center gap-3">
-                        <div class="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
-                            <i class="fas fa-money-bill-wave text-green-400"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-slate-300">USD တန်ဖိုး</p>
-                            <p class="font-bold text-base text-green-300">$<span id="selected-usd-amount">0.0000</span></p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Submit Button -->
-                <button id="submit-withdraw-btn" onclick="submitWithdraw()" 
-                        class="w-full withdraw-btn py-4 flex justify-center items-center gap-3 
-                               text-base font-bold mt-6">
-                    <i class="fas fa-paper-plane text-lg"></i>
-                    <span>ထုတ်ယူရန်တောင်းဆိုမည်</span>
-                </button>
-                
-                <!-- Information -->
-                <div class="mt-6 p-4 bg-slate-900/50 rounded-xl border border-slate-700">
-                    <div class="flex items-start gap-2 mb-2">
-                        <i class="fas fa-exclamation-circle text-amber-400 mt-0.5"></i>
-                        <p class="text-[10px] text-slate-300">
-                            ⚠️ ငွေထုတ်ယူမှုများကို Admin မှ စစ်ဆေးပြီးမှသာ အတည်ပြုပေးပါမည်။
-                        </p>
-                    </div>
-                    <div class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-400 mt-0.5"></i>
-                        <p class="text-[10px] text-green-300">
-                            ✅ 10,000 Points = 1.0000 USD
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Back Button -->
-                <button onclick="showSec('sec-home')" 
-                        class="w-full text-center text-[11px] text-slate-400 mt-6 
-                               hover:text-amber-400 transition-colors">
-                    <i class="fas fa-arrow-left mr-2"></i>Back to Home
-                </button>
+            <div class="p-5 bg-amber-900/20 rounded-2xl mt-4">
+                <p class="text-green-300 font-bold mb-3"><i class="fas fa-exchange-alt mr-2"></i>ငွေထုတ်ယူနည်း</p>
+                <p class="text-slate-300 text-sm">100,000 Point = $1.00 USD (KPay/Wave)</p>
             </div>
-        </div>
-
-        <!-- About Section -->
-        <div id="sec-about" class="section space-y-6">
-            <div class="gold-card p-6">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl 
-                                flex items-center justify-center shadow-lg">
-                        <i class="fas fa-info-circle text-xl text-white"></i>
-                    </div>
-                    <div>
-                        <h3 onclick="handleSecret()" 
-                            class="text-2xl font-black gradient-text italic cursor-pointer select-none">
-                            MM GOLDEN ELITE
-                        </h3>
-                        <p class="text-[10px] text-purple-400">About & Information</p>
-                    </div>
-                </div>
-                
-                <!-- About Content with Styling -->
-                <div class="space-y-4 text-sm leading-relaxed">
-                    <div class="p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 
-                                rounded-xl border border-blue-500/20">
-                        <p class="text-amber-300 font-bold mb-2 flex items-center gap-2">
-                            <i class="fas fa-star text-yellow-400"></i>
-                            <span>MM GOLDEN ELITEအကြောင်း</span>
-                        </p>
-                        <p class="text-slate-200">
-                           
-                        </p>
-                    </div>
+            <div id="admin-panel" class="hidden mt-6">
+                <div class="bg-red-900/30 p-5 rounded-2xl border border-red-500">
+                    <h4 class="text-white font-bold mb-4"><i class="fas fa-user-shield mr-2 text-red-400"></i>Admin Control Panel</h4>
                     
-                    <div class="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 
-                                rounded-xl border border-green-500/20">
-                        <p class="text-green-300 font-bold mb-2 flex items-center gap-2">
-                            <i class="fas fa-gamepad text-green-400"></i>
-                            <span>ငွေရှာနည်းများ</span>
-                        </p>
-                        <ul class="text-slate-200 space-y-2 text-[13px]">
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-circle text-amber-400 text-[8px] mt-1.5"></i>
-                                <span>Lucky Wheel တစ်နေ့ 5 ကြိမ်လှည့်ခြင်း</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-circle text-amber-400 text-[8px] mt-1.5"></i>
-                                <span>မေးခွန်းများဖြေဆိုခြင်း</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-circle text-amber-400 text-[8px] mt-1.5"></i>
-                                <span>Tasks များလုပ်ဆောင်ခြင်း</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-circle text-amber-400 text-[8px] mt-1.5"></i>
-                                <span>သူငယ်ချင်းများဖိတ်ခေါ်ခြင်း</span>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <div class="p-4 bg-gradient-to-r from-amber-900/20 to-orange-900/20 
-                                rounded-xl border border-amber-500/20">
-                        <p class="text-amber-300 font-bold mb-2 flex items-center gap-2">
-                            <i class="fas fa-money-bill-wave text-amber-400"></i>
-                            <span>ငွေထုတ်ယူနည်း</span>
-                        </p>
-                        <p class="text-slate-200 mb-2">
-                            Point များစုကာ သတ်မှတ် Point ပြည့်ပါက ငွေသားအဖြစ်ထုတ်ယူနိုင်သည်။
-                        </p>
-                        <div class="bg-black/40 p-3 rounded-lg mt-2">
-                            <p class="text-center text-green-400 font-bold">
-                                💰 10,000 Points = 1 USD 💰
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div class="p-4 bg-gradient-to-r from-red-900/20 to-rose-900/20 
-                                rounded-xl border border-red-500/20">
-                        <p class="text-red-300 font-bold mb-2 flex items-center gap-2">
-                            <i class="fas fa-exclamation-triangle text-red-400"></i>
-                            <span>စည်းကမ်းချက်များ</span>
-                        </p>
-                        <ul class="text-slate-200 space-y-2 text-[13px]">
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-ban text-red-400 text-xs mt-0.5"></i>
-                                <span>ပေးထားသော Tasks များကိုမှန်ကန်စွာလုပ်ဆောင်ပါ</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-ban text-red-400 text-xs mt-0.5"></i>
-                                <span>ငွေထုတ်ဖုန်းနံပါတ်အား Kpay တစ်လုံး၊ Wave တစ်လုံးစီသာအသုံးပြုနိုင်သည်</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-ban text-red-400 text-xs mt-0.5"></i>
-                                <span>အကောက်တစ်ကောက်သာအသုံးပြုရမည်</span>
-                            </li>
-                            <li class="flex items-start gap-2">
-                                <i class="fas fa-ban text-red-400 text-xs mt-0.5"></i>
-                                <span>ပစ်မှုကြူးလွန်ပါက အကောက်ဖျက်သိမ်းခြင်း၊ Point များလျှော့ခြင်းပြုလုပ်မည်</span>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <div class="p-4 bg-gradient-to-r from-slate-800/30 to-slate-900/30 
-                                rounded-xl border border-slate-700 text-center">
-                        <p class="text-slate-200 italic">
-                            MM Golden အသုံးပြုသူ ညီကိုမောင်နှများအားအထူးကျေးဇူးတင်ရှိပါသည်
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Contact Button -->
-            <a href="https://t.me/Naungthu1610" target="_blank" 
-               class="gold-card p-5 flex justify-between items-center group
-                      hover:border-amber-500/50 transition-all duration-300">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-cyan-600 
-                                rounded-lg flex items-center justify-center">
-                        <i class="fab fa-telegram text-white text-lg"></i>
-                    </div>
-                    <div class="text-left">
-                        <span class="text-sm font-bold block text-white group-hover:text-amber-400 
-                                   transition-colors">
-                            အကူညီယူရန်
-                        </span>
-                        <span class="text-[10px] text-slate-400">@Naungthu1610</span>
-                    </div>
-                </div>
-                <i class="fab fa-telegram-plane text-amber-500 text-lg 
-                         group-hover:scale-110 transition-transform"></i>
-            </a>
-            
-            <!-- Hidden Admin Panel -->
-            <div id="admin-panel" class="hidden space-y-6 pb-20 mt-6">
-                <div class="bg-gradient-to-r from-red-900/30 to-amber-900/30 p-5 rounded-2xl 
-                            border-2 border-red-500 shadow-xl">
-                    <!-- Admin Header -->
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-gradient-to-br from-red-600 to-orange-600 
-                                    rounded-lg flex items-center justify-center">
-                            <i class="fas fa-user-shield text-white"></i>
-                        </div>
-                        <div>
-                            <h4 class="text-white font-bold text-base">Admin Control Panel</h4>
-                            <p class="text-[10px] text-red-300">Administrator Tools</p>
-                        </div>
-                    </div>
-                    
-                    <!-- User Management -->
-                    <div class="mb-6">
-                        <h5 class="text-amber-300 text-xs font-bold mb-3 uppercase flex items-center gap-2">
-                            <i class="fas fa-user-cog"></i> User Management
-                        </h5>
-                        <div class="bg-black/40 p-3 rounded-lg mb-3">
-                            <div class="flex items-center gap-2 mb-2">
-                                <i class="fas fa-search text-slate-400 text-xs"></i>
-                                <input type="text" id="search-user" placeholder="Search User ID" 
-                                       class="text-xs bg-black/50 p-2 rounded flex-1">
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <input type="number" id="adjust-points" placeholder="Points" 
-                                       class="text-xs p-2">
-                                <select id="adjust-action" class="text-xs p-2">
-                                    <option value="add">Add Points</option>
-                                    <option value="remove">Remove Points</option>
+                    <!-- Add Task with Type Selection -->
+                    <div class="mb-5"><h5 class="text-amber-300 text-sm font-bold mb-3">➕ Add Task</h5>
+                        <div class="grid grid-cols-1 gap-2">
+                            <input type="text" id="task-title" placeholder="Task Title" class="text-sm p-3">
+                            <input type="text" id="task-link" placeholder="Link (https://...)" class="text-sm p-3">
+                            <div class="flex gap-2">
+                                <select id="task-type" class="text-sm p-3 flex-1">
+                                    <option value="link">🔗 Link</option>
+                                    <option value="video">🎬 Video (YouTube)</option>
+                                    <option value="telegram">📱 Telegram Channel</option>
                                 </select>
+                                <input type="number" id="task-reward" placeholder="Points" class="text-sm p-3 w-28" value="50">
                             </div>
-                            <button onclick="adjustUserPoints()" 
-                                    class="w-full btn-yellow py-2 text-xs mt-2">
-                                <i class="fas fa-edit mr-1"></i> Adjust Points
-                            </button>
+                            <button onclick="addAdminTask()" class="btn-yellow py-2 text-sm rounded-xl mt-1">Add Task</button>
                         </div>
                     </div>
-                    
-                    <!-- Withdrawal Requests -->
-                    <div class="mb-6">
-                        <h5 class="text-amber-300 text-xs font-bold mb-3 uppercase flex items-center gap-2">
-                            <i class="fas fa-file-invoice-dollar"></i> Withdrawal Requests
-                        </h5>
-                        <div id="admin-withdraw-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
-                            <!-- Withdrawal requests will be loaded here -->
-                        </div>
-                    </div>
+                    <div id="admin-task-list" class="task-list mb-5"></div>
                     
                     <!-- Add Quiz -->
-                    <div class="mb-6">
-                        <h5 class="text-amber-300 text-xs font-bold mb-3 uppercase flex items-center gap-2">
-                            <i class="fas fa-plus-circle"></i> Add New Quiz
-                        </h5>
-                        <input type="text" id="adm-q" placeholder="မေးခွန်း" class="text-xs">
-                        <input type="text" id="adm-a" placeholder="အဖြေ" class="text-xs">
-                        <input type="number" id="adm-p" placeholder="Point" class="text-xs">
-                        <button onclick="addQuiz()" 
-                                class="w-full btn-yellow py-2 text-xs mt-2">
-                            <i class="fas fa-plus mr-1"></i> Add Quiz
-                        </button>
-                    </div>
-                    
-                    <!-- Add Task/Link -->
-                    <div class="mb-6">
-                        <h5 class="text-amber-300 text-xs font-bold mb-3 uppercase flex items-center gap-2">
-                            <i class="fas fa-tasks"></i> Add Task/Link
-                        </h5>
-                        <input type="text" id="task-title" placeholder="Task Title" class="text-xs">
-                        <input type="text" id="task-link" placeholder="Link URL" class="text-xs">
-                        <input type="number" id="task-reward" placeholder="Reward Points" class="text-xs">
-                        <select id="task-type" class="text-xs">
-                            <option value="video">Video Ad</option>
-                            <option value="website">Website Visit</option>
-                            <option value="telegram">Telegram Channel</option>
-                            <option value="other">Other</option>
-                        </select>
-                        <button onclick="addTask()" 
-                                class="w-full btn-yellow py-2 text-xs mt-2">
-                            <i class="fas fa-plus mr-1"></i> Add Task
-                        </button>
-                    </div>
-                    
-                    <!-- User Activity Monitor -->
-                    <div>
-                        <h5 class="text-amber-300 text-xs font-bold mb-3 uppercase flex items-center gap-2">
-                            <i class="fas fa-chart-line"></i> User Activity Monitor
-                        </h5>
-                        <div id="user-activity-log" 
-                             class="bg-black/50 p-3 rounded text-[9px] h-32 overflow-y-auto 
-                                    font-mono border border-slate-700">
-                            <!-- User activity logs will appear here -->
-                        </div>
-                        <button onclick="loadUserActivities()" 
-                                class="w-full bg-slate-800 hover:bg-slate-700 py-2 text-xs mt-2 rounded 
-                                       transition-colors flex items-center justify-center gap-2">
-                            <i class="fas fa-sync-alt"></i> Refresh Logs
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quiz Section -->
-        <div id="sec-quiz" class="section space-y-6">
-            <div class="gold-card p-6 text-center">
-                <div class="flex items-center justify-center gap-3 mb-6">
-                    <div class="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl 
-                                flex items-center justify-center">
-                        <i class="fas fa-brain text-xl text-white"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-white font-bold text-lg">Daily Quiz</h3>
-                        <p class="text-[10px] text-purple-400">Answer and earn points!</p>
-                    </div>
-                </div>
-                
-                <div id="quiz-box">
-                    <div id="quiz-q-display" 
-                         class="bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-2xl 
-                                mb-6 font-bold border-2 border-purple-500/30 min-h-[120px] 
-                                flex items-center justify-center text-white text-base italic">
-                        Loading question...
-                    </div>
-                    <input type="text" id="quiz-ans-input" 
-                           placeholder="အဖြေမှန်ရိုက်ထည့်ပါ..." 
-                           class="text-center text-base p-4">
-                    <button onclick="checkQuiz()" 
-                            class="w-full btn-yellow py-4 text-base font-bold mt-3">
-                        <i class="fas fa-paper-plane mr-2"></i>Submit Answer
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tasks Section -->
-        <div id="sec-tasks" class="section space-y-6">
-            <!-- Video Ad Task -->
-            <div class="gold-card p-5 flex justify-between items-center">
-                <div>
-                    <p class="text-sm font-bold text-white flex items-center gap-2">
-                        <i class="fas fa-play-circle text-blue-400"></i>
-                        Watch Video Ads
-                    </p>
-                    <p class="text-[10px] text-green-500 mt-1">
-                        <i class="fas fa-coins"></i> +100 PTS per ad
-                    </p>
-                </div>
-                <button onclick="watchAdsOnly()" 
-                        class="btn-yellow px-6 py-2 text-xs font-bold hover:scale-105">
-                    WATCH NOW
-                </button>
-            </div>
-            
-            <!-- Tasks Header -->
-            <div class="flex items-center justify-between px-2">
-                <h3 class="text-white font-bold text-base flex items-center gap-2">
-                    <i class="fas fa-tasks text-amber-400"></i>
-                    Tasks & Links
-                </h3>
-                <span class="text-[10px] text-slate-400 bg-black/30 px-2 py-1 rounded-full">
-                    Earn Points
-                </span>
-            </div>
-            
-            <!-- Tasks List -->
-            <div id="task-list-display" class="space-y-3">
-                <!-- Tasks will be loaded here -->
-            </div>
-        </div>
-
-        <!-- History Section -->
-        <div id="sec-history" class="section">
-            <div class="gold-card p-6">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl 
-                                flex items-center justify-center">
-                        <i class="fas fa-history text-xl text-white"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-white font-bold text-lg">Point History</h3>
-                        <p class="text-[10px] text-blue-400">Your point earning history</p>
-                    </div>
-                </div>
-                
-                <div id="history-list" class="space-y-3">
-                    <!-- History will be loaded here -->
-                </div>
-                
-                <button onclick="showSec('sec-home')" 
-                        class="w-full text-center text-slate-400 hover:text-amber-400 
-                               text-sm mt-6 transition-colors">
-                    <i class="fas fa-arrow-left mr-2"></i>Back to Home
-                </button>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Navigation -->
-    <nav class="fixed bottom-0 w-full bg-[#0a0e1a]/95 backdrop-blur-xl border-t border-white/10 
-                flex justify-around py-4 z-50 shadow-2xl">
-        <button onclick="showSec('sec-home')" 
-                class="nav-btn flex flex-col items-center flex-1 text-amber-500 nav-active 
-                       transition-all duration-300">
-            <i class="fas fa-home text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">Home</span>
-        </button>
-        <button onclick="showSec('sec-quiz')" 
-                class="nav-btn flex flex-col items-center flex-1 text-slate-400 
-                       hover:text-amber-400 transition-all duration-300">
-            <i class="fas fa-brain text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">Quiz</span>
-        </button>
-        <button onclick="showSec('sec-invite')" 
-                class="nav-btn flex flex-col items-center flex-1 text-slate-400 
-                       hover:text-amber-400 transition-all duration-300">
-            <i class="fas fa-user-plus text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">Invite</span>
-        </button>
-        <button onclick="showSec('sec-tasks')" 
-                class="nav-btn flex flex-col items-center flex-1 text-slate-400 
-                       hover:text-amber-400 transition-all duration-300">
-            <i class="fas fa-play text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">Ads</span>
-        </button>
-        <button onclick="showSec('sec-about')" 
-                class="nav-btn flex flex-col items-center flex-1 text-slate-400 
-                       hover:text-amber-400 transition-all duration-300">
-            <i class="fas fa-cog text-lg mb-1"></i>
-            <span class="text-[9px] font-bold">Setting</span>
-        </button>
-    </nav>
-
-    <script>
-        // ========== FIREBASE INTEGRATION ==========
-        let isFirebaseConnected = false;
-
-        // Initialize Firebase connection
-        function initializeFirebase() {
-            try {
-                if (window.firebaseDatabase) {
-                    isFirebaseConnected = true;
-                    console.log("✅ Firebase connected successfully");
-                    
-                    // Try to save initial data to Firebase
-                    if (window.firebaseAuth.currentUser) {
-                        saveToFirebase();
-                    }
-                } else {
-                    console.log("⚠️ Firebase not loaded yet");
-                }
-            } catch (error) {
-                console.error("❌ Firebase connection error:", error);
-                isFirebaseConnected = false;
-            }
-        }
-
-        // Save data to Firebase
-        function saveToFirebase() {
-            if (!isFirebaseConnected) {
-                console.log("⚠️ Firebase not connected, using localStorage");
-                saveDB();
-                return;
-            }
-            
-            try {
-                const userRef = ref(window.firebaseDatabase, 'users/' + userId);
-                const userData = {
-                    id: userId,
-                    name: db.users[userId]?.name || "User" + userId.substring(3),
-                    balance: balance,
-                    totalEarned: db.users[userId]?.totalEarned || 0,
-                    invitedFriends: invitedFriends,
-                    joined: new Date().toISOString(),
-                    lastActive: new Date().toISOString(),
-                    history: history.slice(0, 50) // Save last 50 history items
-                };
-                
-                set(userRef, userData);
-                console.log("✅ Data saved to Firebase");
-                
-                // Also save to localStorage as backup
-                saveDB();
-            } catch (error) {
-                console.error("❌ Firebase save error:", error);
-                // Fallback to localStorage
-                saveDB();
-            }
-        }
-
-        // Load data from Firebase
-        async function loadFromFirebase() {
-            if (!isFirebaseConnected) {
-                console.log("⚠️ Firebase not connected, using localStorage");
-                return;
-            }
-            
-            try {
-                const userRef = ref(window.firebaseDatabase, 'users/' + userId);
-                const snapshot = await get(userRef);
-                
-                if (snapshot.exists()) {
-                    const firebaseData = snapshot.val();
-                    console.log("✅ Data loaded from Firebase:", firebaseData);
-                    
-                    // Merge Firebase data with local data
-                    if (firebaseData.balance !== undefined) {
-                        balance = firebaseData.balance;
-                        localStorage.setItem('mmg_bal', balance);
-                    }
-                    
-                    if (firebaseData.invitedFriends) {
-                        invitedFriends = firebaseData.invitedFriends;
-                        localStorage.setItem('mmg_refs', JSON.stringify(invitedFriends));
-                    }
-                    
-                    if (firebaseData.history) {
-                        history = firebaseData.history;
-                        localStorage.setItem('mmg_history', JSON.stringify(history));
-                    }
-                    
-                    // Update database user entry
-                    if (db.users[userId]) {
-                        db.users[userId].balance = balance;
-                        db.users[userId].totalEarned = firebaseData.totalEarned || 0;
-                        db.users[userId].lastActive = new Date().toISOString();
-                    }
-                    
-                    // Update UI
-                    updateBalanceUI();
-                    updateUSDDisplay();
-                    renderRefUI();
-                    
-                    console.log("✅ Firebase data loaded successfully");
-                }
-            } catch (error) {
-                console.error("❌ Firebase load error:", error);
-                // Continue with localStorage data
-            }
-        }
-
-        // ========== END FIREBASE INTEGRATION ==========
-
-        // CORE DATA
-        let userId = localStorage.getItem('mmg_userid') || "ID-" + Math.floor(1000 + Math.random() * 9000);
-        localStorage.setItem('mmg_userid', userId);
-
-        let balance = parseInt(localStorage.getItem('mmg_bal')) || 0;
-        let spinsToday = parseInt(localStorage.getItem('mmg_spins')) || 0;
-        let history = JSON.parse(localStorage.getItem('mmg_history')) || [];
-        let invitedFriends = JSON.parse(localStorage.getItem('mmg_refs')) || [];
-        
-        // WHEEL REWARDS: 5 TO 150
-        const rewards = [5, 20, 50, 150, 10, 80, 100, 30]; 
-
-        let db = JSON.parse(localStorage.getItem('mmg_db_v62')) || {
-            users: {},
-            quizzes: [{q: "မြန်မာနိုင်ငံ၏ မြို့တော်မှာ?", a: "နေပြည်တော်", p: "10"}],
-            tasks: [
-                {title: "Watch Video Ad", link: "#", reward: 1, type: "video"},
-                {title: "Join Telegram Channel", link: "https://t.me/example", reward: 1, type: "telegram"}
-            ],
-            withdrawals: [], 
-            logs: [],
-            topUsers: []
-        };
-
-        // Initialize current user in database
-        if (!db.users[userId]) {
-            db.users[userId] = {
-                id: userId,
-                name: "User" + userId.substring(3),
-                balance: balance,
-                totalEarned: 0,
-                joined: new Date().toLocaleDateString(),
-                lastActive: new Date().toLocaleString()
-            };
-            saveDB();
-        }
-
-        // ========== USD CONVERSION FUNCTIONS ==========
-        function convertPtsToUSD(pts) {
-            return (pts / 10000).toFixed(4);
-        }
-
-        function updateUSDDisplay() {
-            const usdValue = convertPtsToUSD(balance);
-            document.getElementById('current-points').textContent = balance.toLocaleString();
-            document.getElementById('usd-equivalent').textContent = '$' + usdValue;
-            
-            // Update withdraw section
-            document.getElementById('withdraw-current-points').textContent = balance.toLocaleString();
-            document.getElementById('withdraw-usd-value').textContent = '$' + usdValue;
-            
-            // Update withdraw button state
-            updateWithdrawButtonState();
-        }
-
-        function updateWithdrawUSD() {
-            const amountInput = document.getElementById('w-amt');
-            const amount = parseInt(amountInput.value) || 0;
-            const usdValue = convertPtsToUSD(amount);
-            
-            const usdDisplay = document.getElementById('selected-amount-usd');
-            const usdAmountSpan = document.getElementById('selected-usd-amount');
-            
-            if (amount > 0) {
-                usdAmountSpan.textContent = usdValue;
-                usdDisplay.classList.remove('hidden');
-            } else {
-                usdDisplay.classList.add('hidden');
-            }
-            
-            // Update submit button state
-            updateWithdrawSubmitButton();
-        }
-
-        // ========== WITHDRAWAL ELIGIBILITY FUNCTIONS ==========
-        function checkWithdrawEligibility() {
-            if (balance < 10000) {
-                alert(`ကျေးဇူးပြု၍ Point 10,000 ပြည့်အောင် စုဆောင်းပါ။\n\nလက်ရှိ Point: ${balance.toLocaleString()}\nလိုအပ်သော Point: 10,000\nပိုလိုအပ်သော Point: ${(10000 - balance).toLocaleString()}`);
-                return false;
-            }
-            
-            showSec('sec-withdraw');
-            return true;
-        }
-
-        function updateWithdrawButtonState() {
-            const withdrawBtn = document.getElementById('withdraw-home-btn');
-            if (balance < 10000) {
-                withdrawBtn.disabled = true;
-                withdrawBtn.innerHTML = '<i class="fas fa-lock mr-2"></i> ငွေထုတ်ရန် Point 10,000 လိုအပ်ပါသည်';
-            } else {
-                withdrawBtn.disabled = false;
-                withdrawBtn.innerHTML = '<i class="fas fa-wallet mr-2"></i> ငွေထုတ်ယူရန်နေရာ';
-            }
-        }
-
-        function updateWithdrawSubmitButton() {
-            const amountInput = document.getElementById('w-amt');
-            const amount = parseInt(amountInput.value) || 0;
-            const submitBtn = document.getElementById('submit-withdraw-btn');
-            
-            if (amount < 10000 || amount > balance) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-lock mr-2"></i> Point ပမာဏထည့်ပေးပါ';
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> ထုတ်ယူရန်တောင်းဆိုမည်';
-            }
-        }
-
-        // ========== ADMIN USER POINT ADJUSTMENT ==========
-        function adjustUserPoints() {
-            const userId = document.getElementById('search-user').value.trim();
-            const points = parseInt(document.getElementById('adjust-points').value);
-            const action = document.getElementById('adjust-action').value;
-            
-            if (!userId || isNaN(points) || points <= 0) {
-                alert("Please enter valid user ID and points");
-                return;
-            }
-            
-            if (!db.users[userId]) {
-                alert("User not found!");
-                return;
-            }
-            
-            const user = db.users[userId];
-            const oldBalance = user.balance;
-            
-            if (action === 'add') {
-                user.balance += points;
-                user.totalEarned += points;
-                alert(`Added ${points} points to ${userId}\nOld balance: ${oldBalance}\nNew balance: ${user.balance}`);
-                
-                // Log admin action
-                db.logs.unshift(`[${new Date().toLocaleString()}] ADMIN added ${points} points to ${userId}`);
-            } else {
-                if (points > user.balance) {
-                    alert("Cannot remove more points than user has!");
-                    return;
-                }
-                user.balance -= points;
-                alert(`Removed ${points} points from ${userId}\nOld balance: ${oldBalance}\nNew balance: ${user.balance}`);
-                
-                // Log admin action
-                db.logs.unshift(`[${new Date().toLocaleString()}] ADMIN removed ${points} points from ${userId}`);
-            }
-            
-            // Update user's last activity
-            user.lastActive = new Date().toLocaleString();
-            
-            // If adjusting current user, update local balance
-            if (userId === userId) {
-                balance = user.balance;
-                localStorage.setItem('mmg_bal', balance);
-                updateBalanceUI();
-                updateUSDDisplay();
-            }
-            
-            saveDB();
-            loadUserActivities();
-            loadTopUsers();
-        }
-
-        // ========== WITHDRAWAL METHOD FUNCTIONS ==========
-        let selectedWithdrawMethod = 'kapy';
-
-        function updateWithdrawMethod(method) {
-            selectedWithdrawMethod = method;
-            const displayElement = document.getElementById('selected-method-display');
-            if (displayElement) {
-                const methodName = method === 'kapy' ? 'Kpay' : 'Wave Money';
-                const iconClass = method === 'kapy' ? 'fa-wallet text-blue-400' : 'fa-mobile-alt text-green-400';
-                const bgClass = method === 'kapy' ? 'from-blue-500/10 to-blue-600/10' : 'from-green-500/10 to-emerald-600/10';
-                const borderClass = method === 'kapy' ? 'border-blue-500/30' : 'border-green-500/30';
-                
-                displayElement.className = `mb-4 p-4 bg-gradient-to-r ${bgClass} rounded-xl border ${borderClass} text-center`;
-                displayElement.innerHTML = `
-                    <div class="flex items-center justify-center gap-3">
-                        <div class="w-8 h-8 ${method === 'kapy' ? 'bg-blue-500/20' : 'bg-green-500/20'} rounded-full flex items-center justify-center">
-                            <i class="fas ${iconClass}"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-slate-300">ထုတ်ယူမည့်နည်းလမ်း</p>
-                            <p class="font-bold text-sm text-amber-300">${methodName}</p>
+                    <div class="mb-5"><h5 class="text-amber-300 text-sm font-bold mb-3">📝 Add Quiz</h5>
+                        <div class="grid grid-cols-1 gap-2">
+                            <input type="text" id="quiz-question" placeholder="Question" class="text-sm p-3">
+                            <input type="text" id="quiz-answer" placeholder="Answer" class="text-sm p-3">
+                            <input type="number" id="quiz-points" placeholder="Points" class="text-sm p-3" value="50">
+                            <button onclick="addQuizQuestion()" class="btn-yellow py-2 text-sm rounded-xl">Add Quiz</button>
                         </div>
                     </div>
-                `;
-            }
-        }
+                    <div id="quiz-list" class="quiz-list mb-5"></div>
+                    
+                    <!-- User Table -->
+                    <div class="overflow-x-auto mb-5"><table class="admin-table w-full"><thead><tr><th>User</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="admin-user-table"></tbody></table></div>
+                    
+                    <!-- Point Adjustment -->
+                    <div class="grid grid-cols-3 gap-2 mb-5"><input type="text" id="search-user" placeholder="User ID/Name" class="text-sm p-3"><input type="number" id="adjust-points" placeholder="Points" class="text-sm p-3"><select id="adjust-action" class="text-sm p-3"><option value="add">Add</option><option value="remove">Remove</option></select><button onclick="adjustUserPoints()" class="btn-yellow py-2 text-sm col-span-3 rounded-xl">Adjust Points</button></div>
+                    
+                    <!-- Withdrawals -->
+                    <div id="admin-withdraw-list" class="space-y-3 max-h-60 overflow-y-auto"></div>
+                </div>
+            </div>
+            <a href="https://t.me/Naungthu1610" target="_blank" class="gold-card p-4 flex justify-between items-center mt-5 rounded-2xl"><div class="flex items-center gap-3"><i class="fab fa-telegram text-blue-400 text-xl"></i><span class="text-sm font-bold">အကူညီယူရန် @Naungthu1610</span></div><i class="fas fa-arrow-right text-amber-500"></i></a>
+        </div>
+    </div>
+</main>
 
-        // ========== REFERRAL SYSTEM ENHANCEMENT ==========
-        function updateRefStats() {
-            const earned = invitedFriends.length * 100;
-            
-            document.getElementById('ref-count').innerText = invitedFriends.length;
-            document.getElementById('ref-earned').innerText = earned.toLocaleString();
-            document.getElementById('total-refs').innerText = invitedFriends.length;
-        }
+<nav class="fixed bottom-0 w-full bg-[#0a0e1a]/95 backdrop-blur-sm border-t border-white/10 flex justify-around py-3 z-50">
+    <button onclick="showSec('sec-home')" class="nav-btn flex flex-col items-center text-amber-500 nav-active py-1"><i class="fas fa-home text-xl"></i><span class="text-[9px] mt-0.5">Home</span></button>
+    <button onclick="showSec('sec-quiz')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-brain text-xl"></i><span class="text-[9px] mt-0.5">Quiz</span></button>
+    <button onclick="showSec('sec-invite')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-user-plus text-xl"></i><span class="text-[9px] mt-0.5">Invite</span></button>
+    <button onclick="showSec('sec-tasks')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-tasks text-xl"></i><span class="text-[9px] mt-0.5">Tasks</span></button>
+    <button onclick="showSec('sec-about')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-cog text-xl"></i><span class="text-[9px] mt-0.5">Setting</span></button>
+</nav>
 
-        function shareRef() {
-            const refLink = document.getElementById('ref-link').innerText;
-            const shareText = `💰 MM GOLDEN - အခမဲ့ငွေရှာနည်း!\n\nဖိတ်ခေါ်လင့်ခ်: ${refLink}\n\nငွေအမှန်တကယ်ရပါတယ်!`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: 'MM GOLDEN - Invite',
-                    text: shareText,
-                    url: refLink
+<div id="google-login-modal" class="modal" style="display:none">
+    <div class="modal-content gold-card p-8 text-center">
+        <i class="fab fa-google text-5xl text-amber-400 mb-4"></i>
+        <h3 class="text-xl font-bold text-white mb-2">Welcome to MM GOLDEN</h3>
+        <p class="text-sm text-slate-400 mb-6">Sign in with Google to start earning</p>
+        <button onclick="googleSignIn()" class="w-full btn-yellow py-3 rounded-xl text-lg font-bold mb-3"><i class="fab fa-google mr-2"></i>Sign in with Google</button>
+        <button onclick="closeGoogleModal()" class="w-full bg-slate-700 py-2 rounded-xl text-sm">Cancel</button>
+    </div>
+</div>
+
+<script>
+    // ========== CONFIGURATION ==========
+    const MIN_WITHDRAW_POINTS = 100000;
+    const USD_PER_POINT = 1 / 100000;
+    const COIN_TO_POINTS = 10;
+    const REFERRAL_POINTS = 500;
+    const MAX_GAMES_PER_DAY = 5;
+    
+    const QUIZ_MILESTONES = [
+        { target: 50, reward: 50 },
+        { target: 100, reward: 100 },
+        { target: 200, reward: 150 },
+        { target: 500, reward: 550 }
+    ];
+    
+    // ========== GLOBAL STATE ==========
+    let currentUser = null;
+    let userId = null;
+    let balance = 0;
+    let invitedFriends = [];
+    let dailyBonusClaimed = false;
+    let lastBonusDate = '';
+    let completedTasks = [];
+    let completedQuizzes = [];
+    let totalQuizzesAnswered = 0;
+    let claimedMilestones = [];
+    let gamesPlayedToday = 0;
+    let lastGameDate = '';
+    let isAdmin = false;
+    let gameRunning = false, gameCoins = 0, gameBest = parseInt(localStorage.getItem('game_best')) || 0;
+    let gameAnimationId = null, gamePlayerX = 155, gameObstacles = [], gameCoinsList = [], gameFrame = 0;
+    const GAME_WIDTH = 340, GAME_HEIGHT = 420, PLAYER_WIDTH = 32, PLAYER_HEIGHT = 32, OBSTACLE_SIZE = 28, COIN_SIZE = 14;
+    
+    let db = { users: {}, quizzes: [], tasks: [], withdrawals: [], logs: [] };
+    
+    const userRequestCounts = new Map();
+    function checkRateLimit(uid, limit = 60, windowMs = 60000) {
+        const now = Date.now();
+        const requests = userRequestCounts.get(uid) || [];
+        const recent = requests.filter(t => now - t < windowMs);
+        if (recent.length >= limit) return false;
+        recent.push(now);
+        userRequestCounts.set(uid, recent);
+        return true;
+    }
+    
+    let saveTimeout = null;
+    async function saveToFirebase() {
+        if (!window.firebaseDatabase || !userId) return;
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            try {
+                await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, `users/${userId}`), {
+                    id: userId, name: currentUser?.name || 'User', email: currentUser?.email || '', balance, totalEarned: currentUser?.totalEarned || 0,
+                    invitedFriends, completedTasks, completedQuizzes, totalQuizzesAnswered, claimedMilestones,
+                    dailyBonusClaimed, lastBonusDate, gamesPlayedToday, lastGameDate,
+                    lastActive: new Date().toLocaleString()
                 });
-            } else {
-                copyRef();
-                alert("Link copied! Now paste it to share with friends.");
-            }
-        }
-
-        function shareToTelegram() {
-            const refLink = document.getElementById('ref-link').innerText;
-            const message = encodeURIComponent(`💰 MM GOLDEN - အခမဲ့ငွေရှာနည်း!\n\nဖိတ်ခေါ်လင့်ခ်: ${refLink}\n\nငွေအမှန်တကယ်ရပါတယ်!`);
-            window.open(`https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${message}`, '_blank');
-        }
-
-        // ========== MAIN INITIALIZATION ==========
-        window.onload = () => {
-            // Initialize Firebase
-            setTimeout(() => {
-                initializeFirebase();
-                loadFromFirebase();
-            }, 1000);
+                await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, `leaderboard/${userId}`), { name: currentUser?.name || 'User', totalEarned: currentUser?.totalEarned || 0 });
+            } catch(e) { console.error("Save error:", e); }
+        }, 1000);
+    }
+    
+    // ========== GOOGLE LOGIN ==========
+    function showGoogleLogin() { document.getElementById('google-login-modal').style.display = 'flex'; }
+    function closeGoogleModal() { document.getElementById('google-login-modal').style.display = 'none'; }
+    
+    async function googleSignIn() {
+        try {
+            const result = await window.firebaseSignInWithPopup(window.firebaseAuth, window.firebaseGoogleProvider);
+            const user = result.user;
+            userId = user.uid;
+            const userSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `users/${userId}`));
             
-            // Rest of initialization
-            updateBalanceUI(); 
-            updateUSDDisplay();
-            renderQuiz(); 
-            renderTasks(); 
-            drawWheel(); 
+            if (userSnap.exists()) {
+                const data = userSnap.val();
+                currentUser = { id: userId, name: data.name || user.displayName, email: user.email, balance: data.balance || 0, totalEarned: data.totalEarned || 0 };
+                balance = currentUser.balance;
+                invitedFriends = data.invitedFriends || [];
+                completedTasks = data.completedTasks || [];
+                completedQuizzes = data.completedQuizzes || [];
+                totalQuizzesAnswered = data.totalQuizzesAnswered || 0;
+                claimedMilestones = data.claimedMilestones || [];
+                dailyBonusClaimed = data.dailyBonusClaimed || false;
+                lastBonusDate = data.lastBonusDate || '';
+                gamesPlayedToday = data.gamesPlayedToday || 0;
+                lastGameDate = data.lastGameDate || '';
+            } else {
+                currentUser = { id: userId, name: user.displayName || user.email.split('@')[0], email: user.email, balance: 0, totalEarned: 0 };
+                balance = 0;
+                await saveToFirebase();
+            }
+            
+            document.getElementById('display-name').innerText = currentUser.name;
+            document.getElementById('profile-name').innerText = currentUser.name;
+            document.getElementById('google-login-btn').innerHTML = '<i class="fas fa-user-check mr-1"></i> ' + currentUser.name.substring(0, 10);
+            document.getElementById('profile-btn').classList.remove('hidden');
+            closeGoogleModal();
+            
+            const adminSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, 'admins'));
+            const adminList = adminSnap.exists() ? adminSnap.val() : [];
+            isAdmin = adminList.includes(userId);
+            if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
+            
+            await loadUserData();
+            updateBalanceUI();
             renderRefUI();
-            document.getElementById('spin-count').innerText = spinsToday;
-            loadTopUsers();
-            updateUserActivity();
-            updateRefStats();
-            updateWithdrawButtonState();
-            updateWithdrawMethod('kapy');
-        };
-
-        // NAVIGATION LOGIC
-        function showSec(id) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => {
-                b.classList.remove('nav-active', 'text-amber-500');
-                b.classList.add('text-slate-400');
-            });
-            
-            document.getElementById(id).classList.add('active');
-            
-            // Load specific content when section changes
-            if(id === 'sec-history') renderHistory();
-            if(id === 'sec-about') renderAdminData();
-            if(id === 'sec-home') {
-                loadTopUsers();
-                updateUSDDisplay();
-            }
-            if(id === 'sec-tasks') renderTasks();
-            if(id === 'sec-withdraw') {
-                updateWithdrawSubmitButton();
-                updateWithdrawUSD();
-            }
-            
-            // Update nav button
-            const navButtons = document.querySelectorAll('.nav-btn');
-            const sectionMap = {
-                'sec-home': 0,
-                'sec-quiz': 1,
-                'sec-invite': 2,
-                'sec-tasks': 3,
-                'sec-about': 4
-            };
-            
-            if (sectionMap[id] !== undefined) {
-                navButtons[sectionMap[id]].classList.add('nav-active', 'text-amber-500');
-                navButtons[sectionMap[id]].classList.remove('text-slate-400');
-            }
-        }
-
-        // REFERRAL LOGIC
-        function renderRefUI() {
-            document.getElementById('ref-link').innerText = "https://t.me/MMGoldenBot?start=" + userId;
-            
-            if (invitedFriends.length > 0) {
-                document.getElementById('ref-list').innerHTML = invitedFriends.map((id, index) => `
-                    <div class="flex items-center justify-between p-3 bg-gradient-to-r from-slate-800/50 to-slate-900/50 
-                                rounded-xl border border-slate-700/50 hover:border-amber-500/30 transition-colors">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/30 
-                                        flex items-center justify-center">
-                                <span class="text-xs font-bold text-white">${index + 1}</span>
-                            </div>
-                            <div>
-                                <p class="text-xs font-bold text-white">${id}</p>
-                                <p class="text-[9px] text-slate-400">ID: ${id.substring(0, 6)}...</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xs font-bold text-green-400 flex items-center gap-1">
-                                <i class="fas fa-plus text-[8px]"></i>100 PTS
-                            </p>
-                            <p class="text-[9px] text-slate-400">ဖိတ်ခေါ်ပြီး</p>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                document.getElementById('ref-list').innerHTML = `
-                    <div class="text-center py-8">
-                        <div class="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 rounded-full 
-                                    flex items-center justify-center mx-auto mb-4 border border-slate-700">
-                            <i class="fas fa-user-friends text-2xl text-slate-600"></i>
-                        </div>
-                        <p class="text-sm text-slate-400 mb-2">သင်ဖိတ်ခေါ်ထားသူများ မရှိသေးပါ</p>
-                        <p class="text-[10px] text-slate-500">သူငယ်ချင်းများကို ဖိတ်ခေါ်ပြီး ပွိုင့်များ ရယူပါ</p>
-                    </div>
-                `;
-            }
-            
-            updateRefStats();
-        }
-
-        function copyRef() {
-            const refLink = document.getElementById('ref-link').innerText;
-            
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(refLink)
-                    .then(() => {
-                        // Show success message
-                        const successDiv = document.createElement('div');
-                        successDiv.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 z-[1000] ' +
-                                               'bg-gradient-to-r from-green-600 to-emerald-700 text-white ' +
-                                               'px-6 py-3 rounded-xl shadow-xl animate-bounce border border-green-500';
-                        successDiv.innerHTML = `
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-check-circle text-lg"></i>
-                                <span class="font-bold">Link Copied Successfully!</span>
-                            </div>
-                        `;
-                        document.body.appendChild(successDiv);
-                        
-                        setTimeout(() => {
-                            document.body.removeChild(successDiv);
-                        }, 2000);
-                    })
-                    .catch(err => {
-                        alert("Copy failed. Please copy manually: " + refLink);
-                    });
-            } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = refLink;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                
-                alert("Link copied to clipboard!");
-            }
-        }
-
-        // POINT & WITHDRAW LOGIC
-        function addPoints(pts, source) {
-            balance += pts;
-            // Update user in database
-            if (db.users[userId]) {
-                db.users[userId].balance = balance;
-                db.users[userId].totalEarned += pts;
-                db.users[userId].lastActive = new Date().toLocaleString();
-            }
-            
-            let time = new Date().toLocaleTimeString();
-            history.unshift({source, pts, time});
-            
-            // Log activity for admin monitoring
-            let logEntry = `[${new Date().toLocaleString()}] ${userId} +${pts} via ${source}`;
-            db.logs.unshift(logEntry);
-            
-            localStorage.setItem('mmg_bal', balance);
-            localStorage.setItem('mmg_history', JSON.stringify(history));
-            saveDB(); 
-            updateBalanceUI();
-            updateUSDDisplay();
-            updateUserActivity();
-            loadTopUsers(); // Update top users list
-            
-            // Show notification
-            showNotification(`+${pts} PTS added from ${source}`);
-        }
-
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 z-[1000] ' +
-                                   'bg-gradient-to-r from-amber-600 to-orange-600 text-white ' +
-                                   'px-6 py-3 rounded-xl shadow-xl animate-pulse border border-amber-500';
-            notification.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-check-circle text-lg"></i>
-                    <span class="font-bold">${message}</span>
-                </div>
-            `;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 3000);
-        }
-
-        function submitWithdraw() {
-            let n = document.getElementById('w-name').value.trim();
-            let p = document.getElementById('w-phone').value.trim();
-            let a = parseInt(document.getElementById('w-amt').value);
-            
-            if(!n || !p || isNaN(a)) {
-                alert("ကျေးဇူးပြု၍ အချက်အလက်အားလုံးကို ဖြည့်စွက်ပါ။");
-                return;
-            }
-            
-            if(a > balance || a < 10000) {
-                alert("Point မလုံလောက်ပါ သို့မဟုတ် အနည်းဆုံး 10,000 ဖြစ်ရပါမည်။");
-                return;
-            }
-            
-            const methodName = selectedWithdrawMethod === 'kapy' ? 'Kpay' : 'Wave Money';
-            const usdAmount = convertPtsToUSD(a);
-            
-            const confirmMsg = `📋 ငွေထုတ်ယူမှု အသေးစိတ်\n\n` +
-                              `🏦 ငွေထုတ်နည်း: ${methodName}\n` +
-                              `👤 အမည်: ${n}\n` +
-                              `📱 ဖုန်း: ${p}\n` +
-                              `💰 ပမာဏ: ${a.toLocaleString()} PTS\n` +
-                              `💵 ငွေကြေး: $${usdAmount} USD\n\n` +
-                              `အတည်ပြုပါသလား?`;
-            
-            if(!confirm(confirmMsg)) {
-                return;
-            }
-            
-            balance -= a;
-            
-            if (db.users[userId]) {
-                db.users[userId].balance = balance;
-            }
-            
-            let withdrawalRequest = {
-                id: Date.now().toString(),
-                userId: userId,
-                name: n, 
-                phone: p, 
-                amount: a,
-                usdAmount: usdAmount,
-                method: selectedWithdrawMethod,
-                methodName: methodName,
-                status: "pending",
-                time: new Date().toLocaleString(),
-                adminNote: ""
-            };
-            
-            db.withdrawals.unshift(withdrawalRequest);
-            
-            db.logs.unshift(`[${new Date().toLocaleString()}] ${userId} requested withdrawal of ${a} PTS ($${usdAmount} USD) via ${methodName}`);
-            
-            saveDB(); 
-            updateBalanceUI();
-            updateUSDDisplay();
-            
-            // Show success message
-            const successDiv = document.createElement('div');
-            successDiv.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 z-[1000] ' +
-                                 'bg-gradient-to-r from-green-600 to-emerald-700 text-white ' +
-                                 'px-6 py-4 rounded-xl shadow-xl border border-green-500';
-            successDiv.innerHTML = `
-                <div class="text-center">
-                    <i class="fas fa-check-circle text-2xl mb-2 text-green-300"></i>
-                    <p class="font-bold text-base mb-1">Withdrawal Request Submitted!</p>
-                    <p class="text-xs text-green-200">Admin မှ စစ်ဆေးပြီးနောက် ငွေလွှဲပေးပါမည်။</p>
-                </div>
-            `;
-            document.body.appendChild(successDiv);
-            
-            setTimeout(() => {
-                document.body.removeChild(successDiv);
-            }, 5000);
-            
-            // Clear form
-            document.getElementById('w-name').value = '';
-            document.getElementById('w-phone').value = '';
-            document.getElementById('w-amt').value = '';
-            document.getElementById('selected-amount-usd').classList.add('hidden');
-            
-            // Go back to home after 2 seconds
-            setTimeout(() => {
-                showSec('sec-home');
-            }, 2000);
-        }
-
-        // WHEEL LOGIC
-        function drawWheel() {
-            const canvas = document.getElementById('wheelCanvas');
-            const ctx = canvas.getContext('2d');
-            const radius = canvas.width / 2;
-            const angleStep = (Math.PI * 2) / 8;
-            
-            // Draw background
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            for (let i = 0; i < 8; i++) {
-                ctx.beginPath();
-                ctx.moveTo(radius, radius);
-                ctx.arc(radius, radius, radius, i * angleStep, (i + 1) * angleStep);
-                ctx.fillStyle = i % 2 === 0 ? '#f59e0b' : '#1e2937';
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = i % 2 === 0 ? '#d97706' : '#0f172a';
-                ctx.stroke();
-                
-                // Draw text
-                ctx.save();
-                ctx.translate(radius, radius);
-                ctx.rotate(i * angleStep + angleStep / 2);
-                ctx.fillStyle = i % 2 === 0 ? "#000" : "#fbbf24";
-                ctx.font = "bold 16px Arial";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(rewards[i], radius * 0.6, 0);
-                ctx.restore();
-            }
-            
-            // Draw center circle
-            ctx.beginPath();
-            ctx.arc(radius, radius, 20, 0, Math.PI * 2);
-            ctx.fillStyle = '#000';
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#fbbf24';
-            ctx.stroke();
-        }
-
-        function handleWheelSpin() {
-            if(spinsToday >= 5) {
-                alert("Daily spins limited to 5. Come back tomorrow!");
-                return;
-            }
-            
-            const btn = document.getElementById('spin-btn');
-            btn.disabled = true; 
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Watching Ad...';
-            
-            // Simulate ad watching
-            setTimeout(() => {
-                const rot = Math.floor(Math.random() * 360) + 1800;
-                const wheel = document.getElementById('wheelCanvas');
-                wheel.style.transition = 'transform 4s cubic-bezier(0.1, 0, 0.1, 1)';
-                wheel.style.transform = `rotate(${rot}deg)`;
-                
-                setTimeout(() => {
-                    const actualAngle = (360 - (rot % 360)) % 360;
-                    const win = rewards[Math.floor(actualAngle / 45)];
-                    
-                    addPoints(win, "Wheel Spin");
-                    spinsToday++;
-                    localStorage.setItem('mmg_spins', spinsToday);
-                    document.getElementById('spin-count').innerText = spinsToday;
-                    
-                    btn.disabled = false; 
-                    btn.innerHTML = '<i class="fas fa-play-circle mr-2"></i> Spin Wheel (Watch Ad)';
-                    
-                    // Show win animation
-                    const winDiv = document.createElement('div');
-                    winDiv.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 z-[1000] ' +
-                                     'bg-gradient-to-r from-amber-600 to-orange-600 text-white ' +
-                                     'px-8 py-4 rounded-xl shadow-xl border-2 border-amber-400 animate-pulse';
-                    winDiv.innerHTML = `
-                        <div class="text-center">
-                            <i class="fas fa-trophy text-2xl mb-2 text-yellow-300"></i>
-                            <p class="font-bold text-xl mb-1">🎉 You Won!</p>
-                            <p class="text-lg">${win} PTS</p>
-                            <p class="text-xs text-amber-200 mt-2">Added to your balance</p>
-                        </div>
-                    `;
-                    document.body.appendChild(winDiv);
-                    
-                    setTimeout(() => {
-                        document.body.removeChild(winDiv);
-                    }, 3000);
-                    
-                }, 4000);
-            }, 1000);
-        }
-
-        // TASKS MANAGEMENT
-        function renderTasks() {
-            const taskList = document.getElementById('task-list-display');
-            if (!taskList) return;
-            
-            if (db.tasks.length === 0) {
-                taskList.innerHTML = `
-                    <div class="gold-card p-6 text-center">
-                        <div class="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 
-                                    rounded-full flex items-center justify-center mx-auto mb-4 
-                                    border border-slate-700">
-                            <i class="fas fa-tasks text-2xl text-slate-600"></i>
-                        </div>
-                        <p class="text-sm text-slate-400 mb-2">No tasks available yet</p>
-                        <p class="text-[10px] text-slate-500">Check back later for new tasks</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            taskList.innerHTML = db.tasks.map((task, index) => `
-                <div class="gold-card p-4 hover:border-amber-500/30 transition-colors">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-2">
-                                <div class="w-8 h-8 rounded-lg ${getTaskColor(task.type)} 
-                                            flex items-center justify-center">
-                                    ${getTaskIcon(task.type)}
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-sm text-white">${task.title}</h4>
-                                    <p class="text-[10px] ${getTaskTextColor(task.type)} mt-1">
-                                        ${getTaskTypeText(task.type)}
-                                    </p>
-                                </div>
-                            </div>
-                            <p class="text-[10px] text-green-500 font-bold">
-                                <i class="fas fa-coins mr-1"></i>+${task.reward} PTS
-                            </p>
-                        </div>
-                        <button onclick="completeTask(${index})" 
-                                class="btn-yellow px-4 py-2 text-xs font-bold hover:scale-105 
-                                       transition-transform">
-                            DO TASK
-                        </button>
-                    </div>
-                    <a href="${task.link}" target="_blank" 
-                       class="text-[10px] text-amber-300 break-all block mt-2 hover:text-amber-200 
-                              transition-colors">
-                        <i class="fas fa-link mr-1 text-[8px]"></i>
-                        ${task.link.length > 40 ? task.link.substring(0, 40) + '...' : task.link}
-                    </a>
-                </div>
-            `).join('');
-        }
-
-        function getTaskColor(type) {
-            switch(type) {
-                case 'video': return 'bg-blue-500/20';
-                case 'telegram': return 'bg-blue-600/20';
-                case 'website': return 'bg-green-500/20';
-                default: return 'bg-amber-500/20';
-            }
-        }
-
-        function getTaskIcon(type) {
-            switch(type) {
-                case 'video': return '<i class="fas fa-play text-blue-400"></i>';
-                case 'telegram': return '<i class="fab fa-telegram text-blue-500"></i>';
-                case 'website': return '<i class="fas fa-globe text-green-400"></i>';
-                default: return '<i class="fas fa-tasks text-amber-400"></i>';
-            }
-        }
-
-        function getTaskTextColor(type) {
-            switch(type) {
-                case 'video': return 'text-blue-400';
-                case 'telegram': return 'text-blue-500';
-                case 'website': return 'text-green-400';
-                default: return 'text-amber-400';
-            }
-        }
-
-        function getTaskTypeText(type) {
-            switch(type) {
-                case 'video': return 'Video Ad';
-                case 'telegram': return 'Telegram Channel';
-                case 'website': return 'Website Visit';
-                default: return 'Other Task';
-            }
-        }
-
-        function completeTask(index) {
-            if (index >= 0 && index < db.tasks.length) {
-                const task = db.tasks[index];
-                addPoints(task.reward, `Task: ${task.title}`);
-                
-                // Log task completion
-                db.logs.unshift(`[${new Date().toLocaleString()}] ${userId} completed task: ${task.title}`);
-                saveDB();
-            }
-        }
-
-        function addTask() {
-            const title = document.getElementById('task-title').value;
-            const link = document.getElementById('task-link').value;
-            const reward = parseInt(document.getElementById('task-reward').value);
-            const type = document.getElementById('task-type').value;
-            
-            if (!title || !link || isNaN(reward)) {
-                alert("Please fill all task fields correctly");
-                return;
-            }
-            
-            db.tasks.push({title, link, reward, type});
-            saveDB();
             renderTasks();
-            alert("Task added successfully!");
-            
-            // Clear input fields
-            document.getElementById('task-title').value = '';
-            document.getElementById('task-link').value = '';
-            document.getElementById('task-reward').value = '';
-        }
-
-        // TOP USERS FUNCTION
-        function loadTopUsers() {
-            // Calculate top users from all users
-            const allUsers = Object.values(db.users);
-            
-            // Sort by total earned points
-            const sortedUsers = allUsers.sort((a, b) => b.totalEarned - a.totalEarned).slice(0, 5);
-            
-            const topUsersList = document.getElementById('top-users-list');
-            if (!topUsersList) return;
-            
-            if (sortedUsers.length === 0) {
-                topUsersList.innerHTML = `
-                    <div class="text-center py-6">
-                        <div class="w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-900 
-                                    rounded-full flex items-center justify-center mx-auto mb-4 
-                                    border border-slate-700">
-                            <i class="fas fa-users text-xl text-slate-600"></i>
-                        </div>
-                        <p class="text-sm text-slate-400">No users data yet</p>
-                        <p class="text-[10px] text-slate-500 mt-1">Be the first to earn points!</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            topUsersList.innerHTML = sortedUsers.map((user, index) => {
-                let rankClass = '';
-                let rankIcon = '';
-                
-                if (index === 0) {
-                    rankClass = 'bg-gradient-to-br from-yellow-500 to-amber-600';
-                    rankIcon = '<i class="fas fa-crown text-yellow-300"></i>';
-                } else if (index === 1) {
-                    rankClass = 'bg-gradient-to-br from-gray-400 to-gray-500';
-                    rankIcon = '<i class="fas fa-medal text-gray-300"></i>';
-                } else if (index === 2) {
-                    rankClass = 'bg-gradient-to-br from-amber-700 to-amber-800';
-                    rankIcon = '<i class="fas fa-award text-amber-300"></i>';
-                } else {
-                    rankClass = 'bg-gradient-to-br from-slate-700 to-slate-800';
-                    rankIcon = `<span class="text-xs font-bold">${index + 1}</span>`;
-                }
-                
-                return `
-                    <div class="bg-gradient-to-r from-slate-800/50 to-slate-900/50 p-4 rounded-xl 
-                                border border-slate-700/50 hover:border-amber-500/30 transition-colors">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl ${rankClass} 
-                                            flex items-center justify-center">
-                                    ${rankIcon}
-                                </div>
-                                <div>
-                                    <p class="text-sm font-bold text-white">${user.name}</p>
-                                    <p class="text-[10px] text-slate-400">ID: ${user.id.substring(0, 8)}</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-sm font-bold text-amber-400">
-                                    ${user.totalEarned.toLocaleString()} PTS
-                                </p>
-                                <p class="text-[10px] text-slate-500">
-                                    ${user.balance.toLocaleString()} available
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // ADMIN FUNCTIONS
-        function renderAdminData() {
-            // Render withdrawal requests with method info
-            const withdrawList = document.getElementById('admin-withdraw-list');
-            if (withdrawList) {
-                if (db.withdrawals.length === 0) {
-                    withdrawList.innerHTML = `
-                        <div class="text-center py-6">
-                            <div class="w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-900 
-                                        rounded-full flex items-center justify-center mx-auto mb-4 
-                                        border border-slate-700">
-                                <i class="fas fa-file-invoice-dollar text-xl text-slate-600"></i>
-                            </div>
-                            <p class="text-sm text-slate-400">No withdrawal requests</p>
-                            <p class="text-[10px] text-slate-500 mt-1">Waiting for user requests</p>
-                        </div>
-                    `;
-                } else {
-                    withdrawList.innerHTML = db.withdrawals.map(w => {
-                        // Method icon and color
-                        let methodIcon = '';
-                        let methodBg = '';
-                        let methodText = '';
-                        
-                        if (w.method === 'kapy') {
-                            methodIcon = '<i class="fas fa-wallet text-blue-400 mr-1"></i>';
-                            methodBg = 'bg-blue-500/10';
-                            methodText = 'text-blue-300';
-                        } else {
-                            methodIcon = '<i class="fas fa-mobile-alt text-green-400 mr-1"></i>';
-                            methodBg = 'bg-green-500/10';
-                            methodText = 'text-green-300';
-                        }
-                        
-                        let statusClass = '';
-                        let statusText = '';
-                        
-                        if (w.status === 'pending') {
-                            statusClass = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-                            statusText = 'Pending';
-                        } else if (w.status === 'approved') {
-                            statusClass = 'bg-green-500/20 text-green-300 border-green-500/30';
-                            statusText = 'Approved';
-                        } else {
-                            statusClass = 'bg-red-500/20 text-red-300 border-red-500/30';
-                            statusText = 'Rejected';
-                        }
-                        
-                        return `
-                        <div class="bg-gradient-to-r from-slate-800/50 to-slate-900/50 p-4 rounded-xl 
-                                    border ${w.status === 'pending' ? 'border-amber-500/30' : 
-                                            w.status === 'approved' ? 'border-green-500/30' : 
-                                            'border-red-500/30'}">
-                            <div class="flex justify-between items-start mb-3">
-                                <div>
-                                    <p class="text-sm font-bold text-white">${w.name}</p>
-                                    <p class="text-[10px] text-slate-400 mt-1">
-                                        ${w.userId} • ${w.time}
-                                    </p>
-                                </div>
-                                <span class="px-3 py-1 text-[10px] rounded-full ${statusClass} 
-                                       border font-bold">
-                                    ${statusText}
-                                </span>
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-8 h-8 ${methodBg} rounded-lg flex items-center justify-center">
-                                            ${methodIcon}
-                                        </div>
-                                        <div>
-                                            <p class="text-xs ${methodText} font-bold">${w.methodName}</p>
-                                            <p class="text-[10px] text-slate-400">${w.phone}</p>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-lg font-bold text-amber-400">
-                                            ${w.amount.toLocaleString()}
-                                        </p>
-                                        <p class="text-[10px] text-green-300">$${w.usdAmount} USD</p>
-                                    </div>
-                                </div>
-                                ${w.adminNote ? `
-                                    <div class="mt-2 pt-2 border-t border-slate-700/50">
-                                        <p class="text-[10px] text-amber-300">
-                                            <i class="fas fa-sticky-note mr-1"></i> ${w.adminNote}
-                                        </p>
-                                    </div>
-                                ` : ''}
-                                <div class="flex gap-2 pt-2">
-                                    <button onclick="approveWithdraw('${w.id}')" 
-                                            class="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 
-                                                   hover:from-green-700 hover:to-emerald-800 
-                                                   text-white text-xs px-3 py-2 rounded-lg 
-                                                   font-bold transition-all hover:scale-105">
-                                        <i class="fas fa-check mr-1"></i> Approve
-                                    </button>
-                                    <button onclick="rejectWithdraw('${w.id}')" 
-                                            class="flex-1 bg-gradient-to-r from-red-600 to-rose-700 
-                                                   hover:from-red-700 hover:to-rose-800 
-                                                   text-white text-xs px-3 py-2 rounded-lg 
-                                                   font-bold transition-all hover:scale-105">
-                                        <i class="fas fa-times mr-1"></i> Reject
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('');
-                }
-            }
-            
-            // Load user activity logs
-            loadUserActivities();
-        }
-
-        function approveWithdraw(withdrawId) {
-            const withdraw = db.withdrawals.find(w => w.id === withdrawId);
-            if (withdraw) {
-                withdraw.status = "approved";
-                withdraw.adminNote = "Approved by admin on " + new Date().toLocaleString();
-                
-                // Log admin action with method info
-                db.logs.unshift(`[${new Date().toLocaleString()}] ADMIN approved withdrawal ${withdrawId} for ${withdraw.userId} via ${withdraw.methodName} ($${withdraw.usdAmount} USD)`);
-                
-                saveDB();
-                renderAdminData();
-                
-                // Show success message
-                alert(`✅ Withdrawal approved!\n\n${withdraw.methodName} - $${withdraw.usdAmount} USD\nUser: ${withdraw.name}`);
-            }
-        }
-
-        function rejectWithdraw(withdrawId) {
-            const withdraw = db.withdrawals.find(w => w.id === withdrawId);
-            if (withdraw) {
-                const reason = prompt("Enter rejection reason:", "Invalid information");
-                if (reason !== null) {
-                    withdraw.status = "rejected";
-                    withdraw.adminNote = "Rejected: " + reason + " on " + new Date().toLocaleString();
-                    
-                    // Return points to user
-                    if (db.users[withdraw.userId]) {
-                        db.users[withdraw.userId].balance += withdraw.amount;
-                    }
-                    
-                    // Log admin action with method info
-                    db.logs.unshift(`[${new Date().toLocaleString()}] ADMIN rejected withdrawal ${withdrawId} for ${withdraw.userId} via ${withdraw.methodName} ($${withdraw.usdAmount} USD): ${reason}`);
-                    
-                    saveDB();
-                    renderAdminData();
-                    
-                    // Show success message
-                    alert(`❌ Withdrawal rejected!\n\n${withdraw.methodName}\nReason: ${reason}`);
-                }
-            }
-        }
-
-        function loadUserActivities() {
-            const activityLog = document.getElementById('user-activity-log');
-            if (activityLog) {
-                // Get recent logs (last 15)
-                const recentLogs = db.logs.slice(0, 15);
-                
-                if (recentLogs.length === 0) {
-                    activityLog.innerHTML = `
-                        <div class="text-center py-6">
-                            <div class="w-10 h-10 bg-gradient-to-br from-slate-800 to-slate-900 
-                                        rounded-full flex items-center justify-center mx-auto mb-4 
-                                        border border-slate-700">
-                                <i class="fas fa-chart-line text-lg text-slate-600"></i>
-                            </div>
-                            <p class="text-xs text-slate-400">No activity logs yet</p>
-                        </div>
-                    `;
-                } else {
-                    activityLog.innerHTML = recentLogs.map(log => {
-                        let logColor = 'text-slate-300';
-                        if (log.includes('ADMIN')) {
-                            logColor = 'text-red-300';
-                        } else if (log.includes('withdrawal')) {
-                            logColor = 'text-amber-300';
-                        } else if (log.includes('+')) {
-                            logColor = 'text-green-300';
-                        }
-                        
-                        return `
-                            <div class="mb-2 pb-2 border-b border-slate-700/50 last:border-0">
-                                <p class="text-[9px] ${logColor} font-mono">
-                                    ${log}
-                                </p>
-                            </div>
-                        `;
-                    }).join('');
-                }
-            }
-        }
-
-        function updateUserActivity() {
-            // Update user's last activity time
-            if (db.users[userId]) {
-                db.users[userId].lastActive = new Date().toLocaleString();
-                saveDB();
-            }
-        }
-
-        // HELPERS
-        function updateBalanceUI() { 
-            document.getElementById('total-pts').innerText = balance.toLocaleString(); 
-        }
-        
-        function saveDB() { 
-            localStorage.setItem('mmg_db_v62', JSON.stringify(db));
-            
-            // Also save to Firebase if connected
-            if (isFirebaseConnected && window.firebaseAuth.currentUser) {
-                saveToFirebase();
-            }
-        }
-        
-        function renderQuiz() { 
-            const quizDisplay = document.getElementById('quiz-q-display');
-            if (quizDisplay) {
-                quizDisplay.innerText = db.quizzes.length > 0 ? db.quizzes[0].q : "မေးခွန်းကုန်သွားပါပြီ။ နောက်တစ်ခုအတွက်စောင့်ပါ။";
-            }
-        }
-        
-        function checkQuiz() {
-            let ans = document.getElementById('quiz-ans-input').value.trim();
-            if(db.quizzes.length > 0 && ans === db.quizzes[0].a) {
-                addPoints(parseInt(db.quizzes[0].p), "Quiz Solved");
-                db.quizzes.shift(); 
-                saveDB(); 
-                renderQuiz();
-                document.getElementById('quiz-ans-input').value = "";
-            } else {
-                alert("Wrong answer! Try again.");
-            }
-        }
-        
-        function addQuiz() {
-            const q = document.getElementById('adm-q').value;
-            const a = document.getElementById('adm-a').value;
-            const p = parseInt(document.getElementById('adm-p').value);
-            
-            if (!q || !a || isNaN(p)) {
-                alert("Please fill all quiz fields correctly");
-                return;
-            }
-            
-            db.quizzes.push({q, a, p});
-            saveDB(); 
-            renderQuiz(); 
-            
-            // Clear inputs
-            document.getElementById('adm-q').value = '';
-            document.getElementById('adm-a').value = '';
-            document.getElementById('adm-p').value = '';
-            
-            alert("✅ Quiz added successfully!");
-        }
-        
-        function watchAdsOnly() { 
-            // Show loading
-            const originalText = event.target.innerHTML;
-            event.target.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Loading Ad...';
-            event.target.disabled = true;
-            
-            setTimeout(() => {
-                addPoints(100, "Ad View");
-                event.target.innerHTML = originalText;
-                event.target.disabled = false;
-                
-                // Show success message
-                showNotification("+100 PTS added from Video Ad");
-            }, 2000); 
-        }
-        
-        function renderHistory() {
-            const historyList = document.getElementById('history-list');
-            if (historyList) {
-                if (history.length === 0) {
-                    historyList.innerHTML = `
-                        <div class="text-center py-8">
-                            <div class="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-900 
-                                        rounded-full flex items-center justify-center mx-auto mb-4 
-                                        border border-slate-700">
-                                <i class="fas fa-history text-2xl text-slate-600"></i>
-                            </div>
-                            <p class="text-sm text-slate-400 mb-2">No history yet</p>
-                            <p class="text-[10px] text-slate-500">Start earning points to see your history</p>
-                        </div>
-                    `;
-                } else {
-                    historyList.innerHTML = history.map(h => `
-                        <div class="flex items-center justify-between p-4 bg-gradient-to-r 
-                                    from-slate-800/50 to-slate-900/50 rounded-xl border border-slate-700/50 
-                                    hover:border-amber-500/30 transition-colors">
-                            <div>
-                                <div class="flex items-center gap-2 mb-1">
-                                    <div class="w-8 h-8 rounded-lg bg-green-500/20 
-                                                flex items-center justify-center">
-                                        <i class="fas fa-plus text-green-400 text-xs"></i>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm font-bold text-white">${h.source}</span>
-                                        <p class="text-[10px] text-slate-400 mt-1">${h.time}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <span class="text-lg font-bold text-green-400">+${h.pts}</span>
-                        </div>
-                    `).join('');
-                }
-            }
-        }
-        
-        function handleSecret() {
-            let count = (window.sc || 0) + 1; 
-            window.sc = count;
-            if(count === 3) {
-                const password = prompt("🔐 Enter Admin Password:");
-                if(password === "871033") {
-                    document.getElementById('admin-panel').classList.toggle('hidden');
-                    renderAdminData();
-                    
-                    // Show admin access message
-                    const adminMsg = document.createElement('div');
-                    adminMsg.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 z-[1000] ' +
-                                       'bg-gradient-to-r from-red-600 to-orange-600 text-white ' +
-                                       'px-6 py-3 rounded-xl shadow-xl border-2 border-red-500';
-                    adminMsg.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <i class="fas fa-user-shield text-lg"></i>
-                            <span class="font-bold">Admin Panel Activated</span>
-                        </div>
-                    `;
-                    document.body.appendChild(adminMsg);
-                    
-                    setTimeout(() => {
-                        document.body.removeChild(adminMsg);
-                    }, 3000);
-                } else {
-                    alert("❌ Incorrect password!");
-                }
-                window.sc = 0;
-            }
-            setTimeout(() => window.sc = 0, 2000);
-        }
-        
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', function() {
-            drawWheel();
-            updateBalanceUI();
-            updateUSDDisplay();
             renderQuiz();
-            renderTasks();
-            renderRefUI();
-            document.getElementById('spin-count').innerText = spinsToday;
-            loadTopUsers();
-            updateWithdrawButtonState();
-            updateWithdrawMethod('kapy');
+            showNotification(`Welcome ${currentUser.name}!`);
+            
+            const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+            if (startParam && startParam !== userId) setTimeout(() => handleReferral(startParam), 2000);
+        } catch(e) { console.error("Google sign in error:", e); alert("Login failed: " + e.message); }
+    }
+    
+    async function loadUserData() {
+        const userSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `users/${userId}`));
+        if (userSnap.exists()) {
+            const data = userSnap.val();
+            balance = data.balance || 0;
+            invitedFriends = data.invitedFriends || [];
+            completedTasks = data.completedTasks || [];
+            completedQuizzes = data.completedQuizzes || [];
+            totalQuizzesAnswered = data.totalQuizzesAnswered || 0;
+            claimedMilestones = data.claimedMilestones || [];
+            dailyBonusClaimed = data.dailyBonusClaimed || false;
+            lastBonusDate = data.lastBonusDate || '';
+            gamesPlayedToday = data.gamesPlayedToday || 0;
+            lastGameDate = data.lastGameDate || '';
+        }
+        const today = new Date().toDateString();
+        if (lastGameDate !== today) { gamesPlayedToday = 0; lastGameDate = today; await saveToFirebase(); }
+        
+        const [quizzesSnap, tasksSnap, leaderboardSnap] = await Promise.all([
+            window.firebaseGet(window.firebaseRef(window.firebaseDatabase, 'quizzes')),
+            window.firebaseGet(window.firebaseRef(window.firebaseDatabase, 'tasks')),
+            window.firebaseGet(window.firebaseQuery(window.firebaseRef(window.firebaseDatabase, 'leaderboard'), window.firebaseOrderByChild('totalEarned'), window.firebaseLimitToFirst(50)))
+        ]);
+        
+        if (quizzesSnap.exists()) db.quizzes = Object.values(quizzesSnap.val());
+        else { db.quizzes = [{ id: "q1", q: "မြန်မာနိုင်ငံ၏ မြို့တော်မှာ?", a: "နေပြည်တော်", p: 50 }]; await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, 'quizzes'), db.quizzes); }
+        if (tasksSnap.exists()) db.tasks = Object.values(tasksSnap.val());
+        else { db.tasks = [{ id: "t1", title: "Join Telegram Channel", link: "https://t.me/MMGoldenChannel", reward: 50, type: "telegram" }]; await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, 'tasks'), db.tasks); }
+        
+        if (leaderboardSnap.exists()) {
+            const leaders = [];
+            leaderboardSnap.forEach(child => leaders.push({ name: child.val().name, totalEarned: child.val().totalEarned }));
+            renderTopUsers(leaders.slice(0, 5));
+        }
+    }
+    
+    function renderTopUsers(users) {
+        const container = document.getElementById('top-users-list');
+        if (!container) return;
+        if (!users || users.length === 0) { container.innerHTML = '<div class="text-center text-slate-500 py-4">No users yet</div>'; return; }
+        container.innerHTML = users.map((u, i) => `<div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-xl"><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-amber-500/30 flex items-center justify-center"><span class="text-xs font-bold text-amber-400">${i+1}</span></div><span class="text-white">${u.name}</span></div><span class="text-amber-400 font-bold">${(u.totalEarned || 0).toLocaleString()}</span></div>`).join('');
+    }
+    
+    function toggleAdminMode() { 
+        if (!isAdmin) return; 
+        document.body.classList.toggle('admin-mode'); 
+        if (document.body.classList.contains('admin-mode')) { 
+            document.getElementById('admin-mode-btn').innerHTML = '<i class="fas fa-eye"></i> User'; 
+            renderAdminUserTable(); renderAdminWithdrawals(); renderQuizList(); renderAdminTaskList(); 
+            showNotification("Admin Mode ON"); 
+        } else { 
+            document.getElementById('admin-mode-btn').innerHTML = '<i class="fas fa-user-shield"></i> Admin'; 
+            showNotification("User Mode"); 
+        } 
+    }
+    
+    function updateQuizCounterUI() {
+        document.getElementById('total-quiz-count').innerText = totalQuizzesAnswered;
+        QUIZ_MILESTONES.forEach(m => {
+            const el = document.getElementById(`milestone-${m.target}`);
+            if (el) {
+                const isCompleted = claimedMilestones.includes(m.target);
+                const isReached = totalQuizzesAnswered >= m.target;
+                if (isCompleted) { el.className = 'milestone-item milestone-completed'; el.innerHTML = `${m.target} → ${m.reward} PTS ✓`; el.onclick = null; }
+                else if (isReached) { el.className = 'milestone-item milestone-ready'; el.innerHTML = `${m.target} → ${m.reward} PTS 🎁`; el.onclick = () => claimMilestoneReward(m.target, m.reward); }
+                else { el.className = 'milestone-item milestone-pending'; el.innerHTML = `${m.target} → ${m.reward} PTS`; el.onclick = null; }
+            }
         });
-    </script>
+    }
+    
+    async function claimMilestoneReward(target, reward) {
+        if (claimedMilestones.includes(target)) { showNotification("ဒီဆုကို ရယူပြီးသားပါ။"); return; }
+        if (totalQuizzesAnswered < target) { showNotification(`${target} မေးခွန်းဖြေမှ ဆုရမှာပါ။`); return; }
+        await addPointsOptimized(reward, `Quiz Milestone (${target})`);
+        claimedMilestones.push(target);
+        await saveToFirebase();
+        updateQuizCounterUI();
+        showNotification(`🎉 +${reward} PTS for ${target} questions!`);
+    }
+    
+    function updateGameRemainingUI() {
+        const remaining = Math.max(0, MAX_GAMES_PER_DAY - gamesPlayedToday);
+        document.getElementById('game-remaining').innerHTML = `🎮 ယနေ့ကျန်ပွဲရေ: ${remaining}`;
+        const playBtn = document.getElementById('game-play-btn');
+        if (playBtn) { if (remaining <= 0) { playBtn.disabled = true; playBtn.innerHTML = '🔒 ယနေ့ပွဲစဉ်ကုန်ပြီ'; } else { playBtn.disabled = false; playBtn.innerHTML = '▶️ Play'; } }
+    }
+    
+    async function handleReferral(refId) {
+        if (!checkRateLimit(userId, 10, 60000)) return;
+        const refSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `users/${refId}`));
+        if (refSnap.exists()) {
+            const refUser = refSnap.val();
+            const alreadyReferred = refUser.invitedFriends?.includes(userId);
+            if (!alreadyReferred) {
+                await window.firebaseUpdate(window.firebaseRef(window.firebaseDatabase, `users/${refId}`), { balance: (refUser.balance || 0) + REFERRAL_POINTS, totalEarned: (refUser.totalEarned || 0) + REFERRAL_POINTS, invitedFriends: [...(refUser.invitedFriends || []), userId] });
+                await window.firebaseUpdate(window.firebaseRef(window.firebaseDatabase, `leaderboard/${refId}`), { totalEarned: (refUser.totalEarned || 0) + REFERRAL_POINTS });
+                await addPointsOptimized(REFERRAL_POINTS, `Referral Bonus`);
+                showNotification(`🎉 +${REFERRAL_POINTS} PTS from referral!`);
+            }
+        }
+    }
+    
+    async function addPointsOptimized(pts, source) {
+        if (!checkRateLimit(userId, 100, 60000)) { showNotification("Too many requests! Please wait."); return; }
+        balance += pts;
+        if (currentUser) { currentUser.balance = balance; currentUser.totalEarned = (currentUser.totalEarned || 0) + pts; }
+        await saveToFirebase();
+        updateBalanceUI();
+        showNotification(`+${pts} PTS from ${source}`);
+    }
+    
+    function updateBalanceUI() {
+        document.getElementById('total-pts').innerText = balance.toLocaleString();
+        document.getElementById('current-points').innerText = balance.toLocaleString();
+        document.getElementById('withdraw-current-points').innerText = balance.toLocaleString();
+        document.getElementById('usd-equivalent').innerText = '$' + (balance * USD_PER_POINT).toFixed(4);
+        document.getElementById('withdraw-usd-value').innerText = '$' + (balance * USD_PER_POINT).toFixed(4);
+        const percent = Math.min((balance / MIN_WITHDRAW_POINTS) * 100, 100);
+        document.getElementById('withdraw-progress-fill').style.width = percent + '%';
+        document.getElementById('withdraw-progress-fill-modal').style.width = percent + '%';
+        document.getElementById('withdraw-progress-current').innerText = balance.toLocaleString();
+        document.getElementById('profile-total').innerText = (currentUser?.totalEarned || 0).toLocaleString();
+        const btn = document.getElementById('withdraw-home-btn');
+        if (btn) { if (balance < MIN_WITHDRAW_POINTS) { btn.disabled = true; btn.innerHTML = `🔒 ငွေထုတ်ရန် ${MIN_WITHDRAW_POINTS.toLocaleString()} PTS လိုအပ်သည်`; } else { btn.disabled = false; btn.innerHTML = '💰 ငွေထုတ်ယူရန်နေရာ'; } }
+    }
+    
+    function showNotification(msg) {
+        const div = document.createElement('div');
+        div.className = 'fixed top-24 left-1/2 transform -translate-x-1/2 z-[1000] bg-amber-600 text-white px-6 py-3 rounded-xl shadow-xl';
+        div.innerHTML = `<i class="fas fa-check-circle mr-2"></i>${msg}`;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 2500);
+    }
+    
+    function showSec(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        const map = { 'sec-home':0, 'sec-quiz':1, 'sec-invite':2, 'sec-tasks':3, 'sec-about':4 };
+        document.querySelectorAll('.nav-btn').forEach((b,i) => { if(map[id]===i) b.classList.add('nav-active','text-amber-500'); else b.classList.remove('nav-active','text-amber-500'); });
+        if(id === 'sec-profile') { renderUserProfile(); renderUserWithdrawalHistory(); renderUserPersonalActivity(); }
+        if(id === 'sec-about') { renderAdminUserTable(); renderAdminWithdrawals(); renderQuizList(); renderAdminTaskList(); }
+        if(id === 'sec-quiz') updateQuizCounterUI();
+    }
+    
+    async function claimDailyBonus() {
+        if (!currentUser) { showGoogleLogin(); return; }
+        const today = new Date().toDateString();
+        if (dailyBonusClaimed && lastBonusDate === today) { alert("နောက်တစ်နေ့မှ ထပ်မံရယူနိုင်ပါသည်။"); return; }
+        const btn = document.getElementById('daily-bonus-btn');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        await addPointsOptimized(100, "Daily Bonus");
+        dailyBonusClaimed = true; lastBonusDate = today;
+        await saveToFirebase();
+        btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Claimed! +100 PTS';
+        document.getElementById('bonus-status').innerHTML = '<i class="fas fa-check-circle text-green-400"></i> Today\'s bonus claimed!';
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-gift mr-2"></i>Claim Daily Bonus (+100 PTS)'; btn.disabled = false; }, 3000);
+    }
+    
+    // ========== GAME ==========
+    function initGameCanvas() {
+        const canvas = document.getElementById('gameCanvas');
+        if(!canvas) return;
+        canvas.width = GAME_WIDTH; canvas.height = GAME_HEIGHT;
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); if(gameRunning){ const rect=e.target.getBoundingClientRect(); gamePlayerX=Math.min(GAME_WIDTH-PLAYER_WIDTH,Math.max(0, (e.touches[0].clientX-rect.left)*(GAME_WIDTH/rect.width)-PLAYER_WIDTH/2)); } });
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); if(gameRunning){ const rect=e.target.getBoundingClientRect(); gamePlayerX=Math.min(GAME_WIDTH-PLAYER_WIDTH,Math.max(0, (e.touches[0].clientX-rect.left)*(GAME_WIDTH/rect.width)-PLAYER_WIDTH/2)); } });
+        canvas.addEventListener('mousemove', e => { if(gameRunning){ const rect=e.target.getBoundingClientRect(); gamePlayerX=Math.min(GAME_WIDTH-PLAYER_WIDTH,Math.max(0, (e.clientX-rect.left)*(GAME_WIDTH/rect.width)-PLAYER_WIDTH/2)); } });
+        document.getElementById('game-best').innerText = gameBest;
+        drawGame();
+    }
+    
+    function startGame() { 
+        if(!currentUser) { showGoogleLogin(); return; }
+        if(gameRunning) return;
+        const remaining = MAX_GAMES_PER_DAY - gamesPlayedToday;
+        if(remaining <= 0) { showNotification("ယနေ့အတွက် ဂိမ်းဆော့ခွင့် ကုန်သွားပါပြီ။"); return; }
+        gameRunning=true; gameCoins=0; gameFrame=0; gameObstacles=[]; gameCoinsList=[]; 
+        gamePlayerX=GAME_WIDTH/2-PLAYER_WIDTH/2; document.getElementById('game-coins').innerText='0'; 
+        if(gameAnimationId) cancelAnimationFrame(gameAnimationId); gameLoop(); 
+    }
+    
+    function gameLoop() { 
+        if(!gameRunning) return; 
+        gameFrame++; 
+        let currentSpeed = Math.min(12, 5 + Math.floor(gameCoins / 15));
+        let obstacleRate = Math.max(25, 45 - Math.floor(gameCoins / 8));
+        let coinRate = Math.max(20, 28 - Math.floor(gameCoins / 12));
+        
+        if(gameFrame % obstacleRate === 0) gameObstacles.push({x:Math.random()*(GAME_WIDTH-OBSTACLE_SIZE),y:0,width:OBSTACLE_SIZE,height:OBSTACLE_SIZE});
+        if(gameFrame % coinRate === 0) gameCoinsList.push({x:Math.random()*(GAME_WIDTH-COIN_SIZE),y:0,width:COIN_SIZE,height:COIN_SIZE});
+        
+        for(let i=0;i<gameObstacles.length;i++){ gameObstacles[i].y+=currentSpeed; if(gameObstacles[i].y>GAME_HEIGHT){ gameObstacles.splice(i,1); i--; } }
+        for(let i=0;i<gameCoinsList.length;i++){ gameCoinsList[i].y+=currentSpeed-1; if(gameCoinsList[i].y>GAME_HEIGHT){ gameCoinsList.splice(i,1); i--; } }
+        
+        for(let obs of gameObstacles){ if(gamePlayerX<obs.x+obs.width && gamePlayerX+PLAYER_WIDTH>obs.x && GAME_HEIGHT-50<obs.y+obs.height && GAME_HEIGHT-50+PLAYER_HEIGHT>obs.y){ gameOver(); return; } }
+        for(let i=0;i<gameCoinsList.length;i++){ const coin=gameCoinsList[i]; if(gamePlayerX<coin.x+coin.width && gamePlayerX+PLAYER_WIDTH>coin.x && GAME_HEIGHT-50<coin.y+coin.height && GAME_HEIGHT-50+PLAYER_HEIGHT>coin.y){ gameCoinsList.splice(i,1); gameCoins++; document.getElementById('game-coins').innerText=gameCoins; i--; } }
+        drawGame(); gameAnimationId=requestAnimationFrame(gameLoop); 
+    }
+    
+    function drawGame(){ 
+        const canvas=document.getElementById('gameCanvas'); if(!canvas)return; const ctx=canvas.getContext('2d'); 
+        ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT); 
+        ctx.fillStyle='#1a472a'; ctx.fillRect(0,GAME_HEIGHT-50,GAME_WIDTH,50); 
+        ctx.fillStyle='#8B4513'; ctx.fillRect(0,GAME_HEIGHT-52,GAME_WIDTH,4);
+        ctx.fillStyle='#FFD700'; ctx.fillRect(gamePlayerX,GAME_HEIGHT-50,PLAYER_WIDTH,PLAYER_HEIGHT);
+        ctx.fillStyle='#FFA500'; ctx.fillRect(gamePlayerX+6,GAME_HEIGHT-56,20,10);
+        ctx.fillStyle='#000'; ctx.fillRect(gamePlayerX+8,GAME_HEIGHT-44,6,6); ctx.fillRect(gamePlayerX+18,GAME_HEIGHT-44,6,6);
+        ctx.fillStyle='#DC2626';
+        for(let obs of gameObstacles){ ctx.fillRect(obs.x,obs.y,obs.width,obs.height); ctx.fillStyle='#991B1B'; ctx.fillRect(obs.x+4,obs.y+4,obs.width-8,obs.height-8); ctx.fillStyle='#DC2626'; }
+        for(let coin of gameCoinsList){ 
+            ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(coin.x+COIN_SIZE/2,coin.y+COIN_SIZE/2,COIN_SIZE/2,0,Math.PI*2); ctx.fill(); 
+            ctx.fillStyle='#F59E0B'; ctx.beginPath(); ctx.arc(coin.x+COIN_SIZE/2,coin.y+COIN_SIZE/2,COIN_SIZE/3,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle='#FFF'; ctx.font='bold 8px Arial'; ctx.fillText('$',coin.x+COIN_SIZE/2-2,coin.y+COIN_SIZE/2+3);
+        }
+        ctx.fillStyle='white'; ctx.font='bold 16px Arial'; ctx.fillText('💰 '+gameCoins,12,35);
+        if(gameCoins>=50) { ctx.fillStyle='#FFD700'; ctx.font='bold 12px Arial'; ctx.fillText('🔥 '+Math.floor(gameCoins/10)+'x Speed',GAME_WIDTH-70,30); }
+    }
+    
+    async function gameOver(){ 
+        gameRunning=false; if(gameAnimationId) cancelAnimationFrame(gameAnimationId); 
+        const earned=gameCoins*COIN_TO_POINTS; 
+        if(earned>0) { gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI(); await addPointsOptimized(earned,"Coin Runner Game"); }
+        if(gameCoins>gameBest){ gameBest=gameCoins; localStorage.setItem('game_best',gameBest); document.getElementById('game-best').innerText=gameBest; } 
+        const overlayStars = '⭐'.repeat(Math.min(5, Math.floor(gameCoins/20)));
+        const overlay=document.createElement('div'); overlay.className='game-overlay'; 
+        overlay.innerHTML=`<div class="bg-slate-900 p-6 rounded-2xl text-center border border-amber-500 max-w-[300px]"><i class="fas fa-trophy text-5xl text-amber-400 mb-3"></i><p class="text-xl font-bold text-white">${gameCoins>=30?'Great!':'Game Over!'}</p><p class="text-amber-400 mt-2">Coins: ${gameCoins}</p><p class="text-green-400">Earned: +${earned} PTS</p><p class="text-yellow-400 text-sm mt-1">${overlayStars}</p><button onclick="this.parentElement.parentElement.remove(); startGame()" class="btn-yellow px-6 py-2 mt-4 rounded-xl"><i class="fas fa-redo-alt mr-2"></i>Play Again</button><button onclick="this.parentElement.parentElement.remove()" class="bg-slate-700 px-6 py-2 mt-2 rounded-xl ml-2">Close</button></div>`; 
+        document.body.appendChild(overlay); 
+    }
+    
+    // ========== TASKS & QUIZ ==========
+    function renderTasks() { 
+        const c=document.getElementById('task-list-display'); 
+        if(!c)return; 
+        if(db.tasks.length===0){ c.innerHTML='<div class="gold-card p-6 text-center text-slate-500">No tasks yet</div>'; return; } 
+        const typeIcons = { link: "🔗", video: "🎬", telegram: "📱" };
+        c.innerHTML=db.tasks.map(t=>`<div class="gold-card p-4 ${completedTasks.includes(t.id)?'opacity-60':''}"><div class="flex justify-between items-start"><div><h4 class="font-bold text-white">${typeIcons[t.type] || '🔗'} ${t.title}</h4><p class="text-[10px] text-green-500">+${t.reward} PTS</p></div><button onclick="completeTask('${t.id}',${t.reward})" class="btn-yellow px-4 py-2 text-xs rounded-lg" ${completedTasks.includes(t.id)?'disabled':''}>${completedTasks.includes(t.id)?'✓ Completed':'DO TASK'}</button></div><a href="${t.link}" target="_blank" class="text-[10px] text-amber-400 break-all block mt-2">${t.link.substring(0,45)}...</a></div>`).join('');
+        
+        const completedContainer = document.getElementById('completed-tasks-list');
+        if (completedContainer) {
+            const completedTaskItems = completedTasks.filter(taskId => db.tasks.some(t => t.id === taskId));
+            if (completedTaskItems.length === 0) { completedContainer.innerHTML = '<div class="text-center text-slate-500 py-3">ပြီးဆုံးပြီး Task မရှိသေးပါ</div>'; }
+            else { completedContainer.innerHTML = completedTaskItems.map(taskId => { const task = db.tasks.find(t => t.id === taskId); return task ? `<div class="completed-task-item"><i class="fas fa-check-circle text-green-400 mr-2"></i>${task.title} <span class="text-green-400 float-right">+${task.reward} PTS</span></div>` : ''; }).join(''); }
+        }
+    }
+    
+    async function completeTask(id,reward){ 
+        if(completedTasks.includes(id)){ showNotification("Task already completed!"); return; } 
+        completedTasks.push(id); 
+        await addPointsOptimized(reward,"Task"); 
+        await saveToFirebase(); 
+        renderTasks(); 
+    }
+    
+    function renderQuiz(){ 
+        const availableQuizzes = db.quizzes.filter(q => !completedQuizzes.includes(q.id));
+        if (availableQuizzes.length > 0) {
+            document.getElementById('quiz-q-display').innerHTML = `<i class="fas fa-question-circle mr-2 text-purple-400"></i>${availableQuizzes[0].q}`;
+        } else {
+            document.getElementById('quiz-q-display').innerHTML = '🎉 ဂုဏ်ယူပါတယ်! မေးခွန်းအားလုံးဖြေပြီးပါပြီ။';
+        }
+    }
+    
+    async function checkQuiz(){ 
+        const ans = document.getElementById('quiz-ans-input').value.trim(); 
+        const availableQuizzes = db.quizzes.filter(q => !completedQuizzes.includes(q.id));
+        const q = availableQuizzes[0];
+        if(q && ans === q.a){ 
+            await addPointsOptimized(q.p, "Quiz"); 
+            completedQuizzes.push(q.id); 
+            totalQuizzesAnswered++; 
+            await saveToFirebase(); 
+            document.getElementById('quiz-ans-input').value = ""; 
+            renderQuiz(); 
+            updateQuizCounterUI();
+            showNotification(`✅ အဖြေမှန်ပါသည်! +${q.p} PTS (စုစုပေါင်း: ${totalQuizzesAnswered})`); 
+        } else if(q) { 
+            alert("အဖြေမှားနေပါသည်။ ထပ်မံကြိုးစားကြည့်ပါ။"); 
+        } else { 
+            alert("မေးခွန်းအားလုံးဖြေပြီးပါပြီ။"); 
+        } 
+    }
+    
+    function renderRefUI(){ 
+        document.getElementById('ref-link').innerHTML = `https://t.me/MMGoldenBot?start=${userId}`; 
+        document.getElementById('ref-count').innerText = invitedFriends.length; 
+        document.getElementById('ref-earned').innerText = (invitedFriends.length * REFERRAL_POINTS).toLocaleString(); 
+        const c = document.getElementById('ref-list'); 
+        if(!c) return; 
+        if(invitedFriends.length === 0){ c.innerHTML = '<div class="text-center text-slate-500 py-6">No referrals yet</div>'; return; } 
+        c.innerHTML = invitedFriends.map(id => `<div class="flex justify-between p-3 bg-slate-800/50 rounded-xl"><span class="text-xs">${id.substring(0,15)}...</span><span class="text-green-400 font-bold">+${REFERRAL_POINTS} PTS</span></div>`).join(''); 
+    }
+    
+    function copyRef(){ navigator.clipboard.writeText(document.getElementById('ref-link').innerHTML); alert("Link copied!"); }
+    function showUserProfile(){ showSec('sec-profile'); }
+    function renderUserProfile(){ document.getElementById('profile-name').innerText = currentUser?.name || 'User'; document.getElementById('profile-total').innerText = (currentUser?.totalEarned || 0).toLocaleString(); }
+    function renderUserWithdrawalHistory(){ const c = document.getElementById('user-withdrawal-history'); if(!c) return; c.innerHTML = '<div class="text-center text-slate-500 py-4">No withdrawal requests yet</div>'; }
+    function renderUserPersonalActivity(){ const c = document.getElementById('user-activity-log-personal'); if(!c) return; c.innerHTML = '<div class="text-center text-slate-500 py-4">Activity log will appear here</div>'; }
+    function copyUserId(){ if(userId){ navigator.clipboard.writeText(userId); showNotification("User ID copied!"); } }
+    
+    let selectedMethod = 'kapy';
+    function updateWithdrawMethod(m){ selectedMethod = m; }
+    function updateWithdrawUSD(){ const amt = parseInt(document.getElementById('w-amt').value) || 0; document.getElementById('submit-withdraw-btn').disabled = (amt < MIN_WITHDRAW_POINTS || amt > balance); }
+    function checkWithdrawEligibility(){ if(!currentUser){ showGoogleLogin(); return false; } if(balance < MIN_WITHDRAW_POINTS){ alert(`Need ${MIN_WITHDRAW_POINTS.toLocaleString()} PTS`); return false; } showSec('sec-withdraw'); return true; }
+    async function submitWithdraw(){ const name = document.getElementById('w-name').value.trim(), phone = document.getElementById('w-phone').value.trim(), amount = parseInt(document.getElementById('w-amt').value); if(!name || !phone || isNaN(amount)){ alert("Fill all fields"); return; } if(amount < MIN_WITHDRAW_POINTS || amount > balance){ alert("Invalid amount"); return; } const usdAmount = (amount * USD_PER_POINT).toFixed(4); if(!confirm(`${selectedMethod === 'kapy' ? 'Kpay' : 'Wave'}\n${name}\n${amount.toLocaleString()} PTS = $${usdAmount} USD\nConfirm?`)) return; balance -= amount; await saveToFirebase(); updateBalanceUI(); alert("✅ Withdrawal request submitted!"); showSec('sec-home'); }
+    
+    // ========== ADMIN FUNCTIONS ==========
+    function renderAdminUserTable(){ 
+        const tbody = document.getElementById('admin-user-table'); 
+        if(!tbody) return; 
+        const users = Object.values(db.users);
+        if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
+        tbody.innerHTML = users.map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
+    }
+    
+    async function quickAdjustPoints(uid, amount){ 
+        if(!confirm(`Add ${amount} points?`)) return; 
+        const userSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `users/${uid}`)); 
+        if(userSnap.exists()){ 
+            const userData = userSnap.val(); 
+            const newBalance = (userData.balance || 0) + amount; 
+            const newTotal = (userData.totalEarned || 0) + amount; 
+            await window.firebaseUpdate(window.firebaseRef(window.firebaseDatabase, `users/${uid}`), { balance: newBalance, totalEarned: newTotal }); 
+            if(uid === userId){ balance = newBalance; updateBalanceUI(); } 
+            await window.firebaseUpdate(window.firebaseRef(window.firebaseDatabase, `leaderboard/${uid}`), { totalEarned: newTotal }); 
+            showNotification(`Added ${amount} points`); 
+            renderAdminUserTable(); 
+        } 
+    }
+    
+    async function viewUserDetails(uid){ 
+        const userSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `users/${uid}`)); 
+        if(userSnap.exists()){ 
+            const user = userSnap.val(); 
+            alert(`📋 User Details\n\nName: ${user.name || 'N/A'}\nID: ${uid}\nBalance: ${(user.balance || 0).toLocaleString()}\nTotal Earned: ${(user.totalEarned || 0).toLocaleString()}\nTasks: ${(user.completedTasks || []).length}\nQuizzes: ${(user.completedQuizzes || []).length}\nReferrals: ${(user.invitedFriends || []).length}`); 
+        } 
+    }
+    
+    async function adjustUserPoints(){ 
+        const searchTerm = document.getElementById('search-user').value.trim();
+        const points = parseInt(document.getElementById('adjust-points').value);
+        const action = document.getElementById('adjust-action').value;
+        if(!searchTerm || isNaN(points)){ alert("Enter user name/ID and points"); return; }
+        let foundUid = null;
+        for(let uid in db.users){ if(db.users[uid].name === searchTerm || db.users[uid].id === searchTerm || uid === searchTerm){ foundUid = uid; break; } }
+        if(!foundUid){ alert("User not found"); return; }
+        const userSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `users/${foundUid}`));
+        if(userSnap.exists()){
+            const userData = userSnap.val();
+            let newBalance = userData.balance || 0;
+            let newTotal = userData.totalEarned || 0;
+            if(action === 'add'){ newBalance += points; newTotal += points; await window.firebaseUpdate(window.firebaseRef(window.firebaseDatabase, `users/${foundUid}`), { balance: newBalance, totalEarned: newTotal }); showNotification(`Added ${points} points`); }
+            else{ if(points > newBalance){ alert("Not enough points!"); return; } newBalance -= points; await window.firebaseUpdate(window.firebaseRef(window.firebaseDatabase, `users/${foundUid}`), { balance: newBalance }); showNotification(`Removed ${points} points`); }
+            await window.firebaseUpdate(window.firebaseRef(window.firebaseDatabase, `leaderboard/${foundUid}`), { totalEarned: newTotal });
+            if(foundUid === userId){ balance = newBalance; updateBalanceUI(); }
+            renderAdminUserTable();
+        }
+    }
+    
+    function renderAdminWithdrawals(){ const c = document.getElementById('admin-withdraw-list'); if(!c) return; c.innerHTML = '<p class="text-slate-500 text-center py-4">No pending withdrawal requests</p>'; }
+    
+    async function addAdminTask(){ 
+        const title = document.getElementById('task-title').value.trim(); 
+        const link = document.getElementById('task-link').value.trim(); 
+        const type = document.getElementById('task-type').value;
+        const reward = parseInt(document.getElementById('task-reward').value); 
+        if(!title || !link || isNaN(reward)){ alert("Fill all fields"); return; } 
+        const newId = Date.now().toString(); 
+        const newTask = { id: newId, title, link, reward, type }; 
+        db.tasks.push(newTask); 
+        await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, `tasks/${newId}`), newTask); 
+        renderAdminTaskList(); 
+        renderTasks(); 
+        document.getElementById('task-title').value = ''; 
+        document.getElementById('task-link').value = ''; 
+        showNotification("Task added!"); 
+    }
+    
+    function renderAdminTaskList(){ 
+        const c = document.getElementById('admin-task-list'); 
+        if(!c) return; 
+        if(db.tasks.length === 0){ c.innerHTML = '<div class="text-center text-slate-500 py-2">No tasks</div>'; return; } 
+        const typeIcons = { link: "🔗", video: "🎬", telegram: "📱" };
+        c.innerHTML = db.tasks.map(t => `<div class="task-item flex justify-between items-center"><div><p class="text-xs text-white">${typeIcons[t.type] || '🔗'} ${t.title}</p><p class="text-[9px] text-amber-400">+${t.reward} PTS</p></div><button onclick="deleteAdminTask('${t.id}')" class="bg-red-600/50 px-2 py-1 rounded text-[10px]">Delete</button></div>`).join(''); 
+    }
+    
+    async function deleteAdminTask(id){ if(confirm("Delete?")){ db.tasks = db.tasks.filter(t => t.id !== id); await window.firebaseRemove(window.firebaseRef(window.firebaseDatabase, `tasks/${id}`)); renderAdminTaskList(); renderTasks(); showNotification("Task deleted"); } }
+    
+    async function addQuizQuestion(){ 
+        const q = document.getElementById('quiz-question').value.trim(); 
+        const a = document.getElementById('quiz-answer').value.trim(); 
+        const p = parseInt(document.getElementById('quiz-points').value); 
+        if(!q || !a || isNaN(p)){ alert("Fill all fields"); return; } 
+        const newId = Date.now().toString(); 
+        const newQuiz = { id: newId, q, a, p }; 
+        db.quizzes.push(newQuiz); 
+        await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, `quizzes/${newId}`), newQuiz); 
+        renderQuizList(); 
+        renderQuiz(); 
+        document.getElementById('quiz-question').value = ''; 
+        document.getElementById('quiz-answer').value = ''; 
+        showNotification("Quiz added! Users can now answer it."); 
+    }
+    
+    function renderQuizList(){ 
+        const c = document.getElementById('quiz-list'); 
+        if(!c) return; 
+        if(db.quizzes.length === 0){ c.innerHTML = '<div class="text-center text-slate-500 py-2">No quizzes</div>'; return; } 
+        c.innerHTML = db.quizzes.map(q => `<div class="quiz-item flex justify-between items-center"><div><p class="text-xs text-white">${q.q}</p><p class="text-[9px] text-amber-400">+${q.p} PTS</p></div><button onclick="deleteQuizQuestion('${q.id}')" class="bg-red-600/50 px-2 py-1 rounded text-[10px]">Delete</button></div>`).join(''); 
+    }
+    
+    async function deleteQuizQuestion(id){ if(confirm("Delete?")){ db.quizzes = db.quizzes.filter(q => q.id !== id); await window.firebaseRemove(window.firebaseRef(window.firebaseDatabase, `quizzes/${id}`)); renderQuizList(); renderQuiz(); showNotification("Quiz deleted"); } }
+    
+    let secretCount = 0;
+    function handleSecret(){ secretCount++; setTimeout(() => secretCount = 0, 2000); if(secretCount === 3){ const pwd = prompt("Admin Password:"); if(pwd === "871033"){ document.getElementById('admin-panel').classList.toggle('hidden'); if(document.getElementById('admin-panel').classList.contains('hidden')){ document.body.classList.remove('admin-mode'); } } else alert("Wrong password!"); secretCount = 0; } }
+    
+    async function setupAdminList() { if(!window.firebaseDatabase) return; const adminListRef = window.firebaseRef(window.firebaseDatabase, 'admins'); const snapshot = await window.firebaseGet(adminListRef); if(!snapshot.exists()){ const adminIds = ["5494834672"]; await window.firebaseSet(adminListRef, adminIds); console.log("Admin list initialized"); } }
+    
+    // ========== INIT ==========
+    setupAdminList();
+    initGameCanvas();
+    
+    window.addEventListener('load', () => {
+        if (window.firebaseOnAuthStateChanged) {
+            window.firebaseOnAuthStateChanged(window.firebaseAuth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    const userSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `users/${userId}`));
+                    if (userSnap.exists()) {
+                        const data = userSnap.val();
+                        currentUser = { id: userId, name: data.name || user.displayName, email: user.email, balance: data.balance || 0, totalEarned: data.totalEarned || 0 };
+                        balance = currentUser.balance;
+                        invitedFriends = data.invitedFriends || [];
+                        completedTasks = data.completedTasks || [];
+                        completedQuizzes = data.completedQuizzes || [];
+                        totalQuizzesAnswered = data.totalQuizzesAnswered || 0;
+                        claimedMilestones = data.claimedMilestones || [];
+                        dailyBonusClaimed = data.dailyBonusClaimed || false;
+                        lastBonusDate = data.lastBonusDate || '';
+                        gamesPlayedToday = data.gamesPlayedToday || 0;
+                        lastGameDate = data.lastGameDate || '';
+                    } else {
+                        currentUser = { id: userId, name: user.displayName || user.email.split('@')[0], email: user.email, balance: 0, totalEarned: 0 };
+                        await saveToFirebase();
+                    }
+                    document.getElementById('display-name').innerText = currentUser.name;
+                    document.getElementById('profile-name').innerText = currentUser.name;
+                    document.getElementById('google-login-btn').innerHTML = '<i class="fas fa-user-check mr-1"></i> ' + currentUser.name.substring(0, 10);
+                    document.getElementById('profile-btn').classList.remove('hidden');
+                    
+                    const adminSnap = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, 'admins'));
+                    const adminList = adminSnap.exists() ? adminSnap.val() : [];
+                    isAdmin = adminList.includes(userId);
+                    if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
+                    
+                    await loadUserData();
+                    updateBalanceUI();
+                    renderRefUI();
+                    renderTasks();
+                    renderQuiz();
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>
