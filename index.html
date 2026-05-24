@@ -54,7 +54,7 @@
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .gold-card { background: linear-gradient(145deg, #1a1f33, #0f1424); border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); transition: transform 0.2s ease; }
         .gold-card:hover { transform: translateY(-2px); border-color: rgba(251, 191, 36, 0.4); }
-        .btn-yellow { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color: #0a0e1a; font-weight: 800; border-radius: 16px; transition: all 0.2s ease; border: none; }
+        .btn-yellow { background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%); color: #0a0e1a; font-weight: 800; border-radius: 16px; transition: all 0.2s ease; border: none; cursor: pointer; }
         .btn-yellow:active { transform: scale(0.97); }
         .btn-yellow:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
         .nav-active { color: #fbbf24 !important; border-top: 3px solid #fbbf24; background: rgba(245, 158, 11, 0.1); border-radius: 12px 12px 0 0; }
@@ -71,7 +71,6 @@
         .admin-table th, .admin-table td { padding: 8px 6px; border-bottom: 1px solid rgba(251,191,36,0.15); }
         .admin-table th { color: #fbbf24; background: rgba(0,0,0,0.3); }
         .user-row:hover { background: rgba(251,191,36,0.1); cursor: pointer; }
-        .activity-log { font-size: 9px; max-height: 300px; overflow-y: auto; }
         .quiz-list, .task-list { max-height: 200px; overflow-y: auto; }
         .quiz-item, .task-item { background: rgba(0,0,0,0.25); padding: 8px; margin-bottom: 6px; border-radius: 10px; }
         .completed-tasks-list { max-height: 180px; overflow-y: auto; border-top: 1px solid rgba(251,191,36,0.2); margin-top: 12px; padding-top: 12px; }
@@ -86,9 +85,16 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #fbbf24; border-radius: 10px; }
+        .web-mode-badge { position: fixed; bottom: 70px; right: 10px; background: #334155; padding: 4px 8px; border-radius: 20px; font-size: 9px; z-index: 100; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0e1a; z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
     </style>
 </head>
 <body>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <i class="fas fa-spinner fa-spin text-4xl text-amber-400 mb-4"></i>
+    <p class="text-white">Loading MM GOLDEN...</p>
+</div>
 
 <div class="fixed top-0 w-full bg-[#0a0e1a]/95 backdrop-blur-sm p-4 z-50 border-b border-amber-500/20">
     <div class="max-w-md mx-auto">
@@ -118,7 +124,7 @@
     </div>
 </div>
 
-<main class="max-w-md mx-auto pt-28 px-4">
+<main class="max-w-md mx-auto pt-28 px-4" style="display: none;" id="mainContent">
     <!-- Home Section -->
     <div id="sec-home" class="section active space-y-5">
         <div class="gold-card p-6 text-center">
@@ -317,6 +323,8 @@
     <button onclick="showSec('sec-about')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-cog text-xl"></i><span class="text-[9px] mt-0.5">Setting</span></button>
 </nav>
 
+<div id="webModeBadge" class="web-mode-badge hidden">🌐 Web Mode</div>
+
 <script>
     // ========== CONFIGURATION ==========
     const MIN_WITHDRAW_POINTS = 100000;
@@ -324,6 +332,7 @@
     const COIN_TO_POINTS = 10;
     const REFERRAL_POINTS = 500;
     const MAX_GAMES_PER_DAY = 5;
+    const BOT_USERNAME = "MMGOLDEN_bot";
     
     const QUIZ_MILESTONES = [
         { target: 50, reward: 50 },
@@ -345,15 +354,26 @@
     let gamesPlayedToday = 0;
     let lastGameDate = '';
     let isAdmin = false;
+    let isWebMode = false;
+    
     let gameRunning = false, gameCoins = 0, gameBest = parseInt(localStorage.getItem('game_best')) || 0;
     let gameAnimationId = null, gamePlayerX = 155, gameObstacles = [], gameCoinsList = [], gameFrame = 0;
     const GAME_WIDTH = 340, GAME_HEIGHT = 420, PLAYER_WIDTH = 32, PLAYER_HEIGHT = 32, OBSTACLE_SIZE = 28, COIN_SIZE = 14;
     
-    // Cache
     let quizzesCache = [];
     let tasksCache = [];
-    
     let saveTimeout = null;
+    
+    // Loading screen
+    setTimeout(() => {
+        const loading = document.getElementById('loadingOverlay');
+        const mainContent = document.getElementById('mainContent');
+        if(loading && mainContent) {
+            loading.style.display = 'none';
+            mainContent.style.display = 'block';
+        }
+    }, 1500);
+    
     async function saveToFirebase() {
         if (!window.firestore || !userId) return;
         if (saveTimeout) clearTimeout(saveTimeout);
@@ -384,101 +404,142 @@
         }, 1000);
     }
     
-    async function initTelegramUser() {
+    function getUserId() {
         const tg = window.Telegram?.WebApp;
-        if (!tg) {
-            document.getElementById('display-name').innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Please open in Telegram';
-            return;
+        if (tg && tg.initDataUnsafe?.user) {
+            return tg.initDataUnsafe.user.id.toString();
         }
-        tg.ready();
-        tg.expand();
-        const user = tg.initDataUnsafe?.user;
-        if (!user) {
-            document.getElementById('display-name').innerHTML = '<i class="fas fa-user-slash mr-1"></i>No user data';
-            return;
+        isWebMode = true;
+        document.getElementById('webModeBadge').classList.remove('hidden');
+        let webId = localStorage.getItem('web_user_id');
+        if (!webId) {
+            webId = 'web_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+            localStorage.setItem('web_user_id', webId);
         }
-        
-        userId = user.id.toString();
-        userName = user.first_name || (user.username ? '@' + user.username : 'User');
-        if (user.last_name) userName += ' ' + user.last_name;
+        return webId;
+    }
+    
+    function getUserName() {
+        const tg = window.Telegram?.WebApp;
+        if (tg && tg.initDataUnsafe?.user) {
+            const user = tg.initDataUnsafe.user;
+            let name = user.first_name || (user.username ? '@' + user.username : 'User');
+            if (user.last_name) name += ' ' + user.last_name;
+            return name;
+        }
+        let webName = localStorage.getItem('web_user_name');
+        if (!webName) {
+            webName = 'WebUser_' + Math.random().toString(36).substr(2, 4);
+            localStorage.setItem('web_user_name', webName);
+        }
+        return webName;
+    }
+    
+    function getStartParam() {
+        const tg = window.Telegram?.WebApp;
+        if (tg && tg.initDataUnsafe?.start_param) {
+            return tg.initDataUnsafe.start_param;
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('start') || urlParams.get('startapp');
+    }
+    
+    async function initTelegramUser() {
+        userId = getUserId();
+        userName = getUserName();
         
         document.getElementById('display-name').innerHTML = `<i class="fab fa-telegram mr-1"></i>${userName}`;
         document.getElementById('profile-name').innerText = userName;
         document.getElementById('profile-user-id').innerText = userId;
         
-        const userRef = window.fsDoc(window.firestore, 'users', userId);
-        const userSnap = await window.fsGetDoc(userRef);
-        
-        if (userSnap.exists()) {
-            const data = userSnap.data();
-            currentUser = { id: userId, name: data.name || userName, balance: data.balance || 0, totalEarned: data.totalEarned || 0 };
-            balance = currentUser.balance;
-            invitedFriends = data.invitedFriends || [];
-            completedTasks = data.completedTasks || [];
-            completedQuizzes = data.completedQuizzes || [];
-            totalQuizzesAnswered = data.totalQuizzesAnswered || 0;
-            claimedMilestones = data.claimedMilestones || [];
-            gamesPlayedToday = data.gamesPlayedToday || 0;
-            lastGameDate = data.lastGameDate || '';
-        } else {
-            currentUser = { id: userId, name: userName, balance: 0, totalEarned: 0 };
-            balance = 0;
-            await saveToFirebase();
+        try {
+            const userRef = window.fsDoc(window.firestore, 'users', userId);
+            const userSnap = await window.fsGetDoc(userRef);
+            
+            if (userSnap.exists()) {
+                const data = userSnap.data();
+                currentUser = { id: userId, name: data.name || userName, balance: data.balance || 0, totalEarned: data.totalEarned || 0 };
+                balance = currentUser.balance;
+                invitedFriends = data.invitedFriends || [];
+                completedTasks = data.completedTasks || [];
+                completedQuizzes = data.completedQuizzes || [];
+                totalQuizzesAnswered = data.totalQuizzesAnswered || 0;
+                claimedMilestones = data.claimedMilestones || [];
+                gamesPlayedToday = data.gamesPlayedToday || 0;
+                lastGameDate = data.lastGameDate || '';
+            } else {
+                currentUser = { id: userId, name: userName, balance: 0, totalEarned: 0 };
+                balance = 0;
+                await saveToFirebase();
+            }
+            
+            const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
+            const adminSnap = await window.fsGetDoc(adminRef);
+            const adminList = adminSnap.exists() ? (adminSnap.data().ids || []) : [];
+            isAdmin = adminList.includes(userId);
+            if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
+            
+            const startParam = getStartParam();
+            if (startParam && startParam !== userId) {
+                setTimeout(() => handleReferral(startParam), 2000);
+            }
+            
+            const today = new Date().toDateString();
+            if (lastGameDate !== today) { gamesPlayedToday = 0; lastGameDate = today; await saveToFirebase(); }
+            
+            await loadDataFromFirestore();
+            updateBalanceUI();
+            renderRefUI();
+            renderTasks();
+            renderQuiz();
+            updateGameRemainingUI();
+            updateQuizCounterUI();
+            showNotification(`Welcome ${userName}! 🎉`);
+            
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.ready();
+                tg.expand();
+            }
+        } catch(error) {
+            console.error("Firebase error:", error);
+            showNotification("Firebase connection issue. Please check console.");
         }
-        
-        const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
-        const adminSnap = await window.fsGetDoc(adminRef);
-        const adminList = adminSnap.exists() ? (adminSnap.data().ids || []) : [];
-        isAdmin = adminList.includes(userId);
-        if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
-        
-        const startParam = tg.initDataUnsafe?.start_param;
-        if (startParam && startParam !== userId) {
-            setTimeout(() => handleReferral(startParam), 2000);
-        }
-        
-        const today = new Date().toDateString();
-        if (lastGameDate !== today) { gamesPlayedToday = 0; lastGameDate = today; await saveToFirebase(); }
-        
-        await loadDataFromFirestore();
-        updateBalanceUI();
-        renderRefUI();
-        renderTasks();
-        renderQuiz();
-        updateGameRemainingUI();
-        updateQuizCounterUI();
-        showNotification(`Welcome ${userName}! 🎉`);
     }
     
     async function loadDataFromFirestore() {
         if (!window.firestore) return;
         
-        const quizzesCollection = window.fsCollection(window.firestore, 'quizzes');
-        const quizzesSnapshot = await window.fsGetDocs(quizzesCollection);
-        quizzesCache = [];
-        quizzesSnapshot.forEach(doc => quizzesCache.push({ id: doc.id, ...doc.data() }));
-        if (quizzesCache.length === 0) {
-            const defaultQuiz = { q: "မြန်မာနိုင်ငံ၏ မြို့တော်မှာ?", a: "နေပြည်တော်", p: 50 };
-            await window.fsSetDoc(window.fsDoc(window.firestore, 'quizzes', 'default1'), defaultQuiz);
-            quizzesCache = [{ id: 'default1', ...defaultQuiz }];
+        try {
+            const quizzesCollection = window.fsCollection(window.firestore, 'quizzes');
+            const quizzesSnapshot = await window.fsGetDocs(quizzesCollection);
+            quizzesCache = [];
+            quizzesSnapshot.forEach(doc => quizzesCache.push({ id: doc.id, ...doc.data() }));
+            if (quizzesCache.length === 0) {
+                const defaultQuiz = { q: "မြန်မာနိုင်ငံ၏ မြို့တော်မှာ?", a: "နေပြည်တော်", p: 50 };
+                await window.fsSetDoc(window.fsDoc(window.firestore, 'quizzes', 'default1'), defaultQuiz);
+                quizzesCache = [{ id: 'default1', ...defaultQuiz }];
+            }
+            
+            const tasksCollection = window.fsCollection(window.firestore, 'tasks');
+            const tasksSnapshot = await window.fsGetDocs(tasksCollection);
+            tasksCache = [];
+            tasksSnapshot.forEach(doc => tasksCache.push({ id: doc.id, ...doc.data() }));
+            if (tasksCache.length === 0) {
+                const defaultTask = { title: "Join Telegram Channel", link: "https://t.me/MMGoldenChannel", reward: 50, type: "telegram" };
+                await window.fsSetDoc(window.fsDoc(window.firestore, 'tasks', 'default1'), defaultTask);
+                tasksCache = [{ id: 'default1', ...defaultTask }];
+            }
+            
+            const leaderboardCollection = window.fsCollection(window.firestore, 'leaderboard');
+            const leaderboardQuery = window.fsQuery(leaderboardCollection, window.fsOrderBy('totalEarned', 'desc'), window.fsLimit(50));
+            const leaderboardSnapshot = await window.fsGetDocs(leaderboardQuery);
+            const leaders = [];
+            leaderboardSnapshot.forEach(doc => leaders.push({ name: doc.data().name, totalEarned: doc.data().totalEarned }));
+            renderTopUsers(leaders.slice(0, 5));
+        } catch(error) {
+            console.error("Load data error:", error);
         }
-        
-        const tasksCollection = window.fsCollection(window.firestore, 'tasks');
-        const tasksSnapshot = await window.fsGetDocs(tasksCollection);
-        tasksCache = [];
-        tasksSnapshot.forEach(doc => tasksCache.push({ id: doc.id, ...doc.data() }));
-        if (tasksCache.length === 0) {
-            const defaultTask = { title: "Join Telegram Channel", link: "https://t.me/MMGoldenChannel", reward: 50, type: "telegram" };
-            await window.fsSetDoc(window.fsDoc(window.firestore, 'tasks', 'default1'), defaultTask);
-            tasksCache = [{ id: 'default1', ...defaultTask }];
-        }
-        
-        const leaderboardCollection = window.fsCollection(window.firestore, 'leaderboard');
-        const leaderboardQuery = window.fsQuery(leaderboardCollection, window.fsOrderBy('totalEarned', 'desc'), window.fsLimit(50));
-        const leaderboardSnapshot = await window.fsGetDocs(leaderboardQuery);
-        const leaders = [];
-        leaderboardSnapshot.forEach(doc => leaders.push({ name: doc.data().name, totalEarned: doc.data().totalEarned }));
-        renderTopUsers(leaders.slice(0, 5));
     }
     
     function renderTopUsers(users) {
@@ -533,23 +594,26 @@
     }
     
     async function handleReferral(refId) {
-        const userRef = window.fsDoc(window.firestore, 'users', refId);
-        const userSnap = await window.fsGetDoc(userRef);
-        if (userSnap.exists()) {
-            const refUser = userSnap.data();
-            const alreadyReferred = refUser.invitedFriends?.includes(userId);
-            if (!alreadyReferred) {
-                await window.fsUpdateDoc(userRef, {
-                    balance: (refUser.balance || 0) + REFERRAL_POINTS,
-                    totalEarned: (refUser.totalEarned || 0) + REFERRAL_POINTS,
-                    invitedFriends: window.fsArrayUnion(userId)
-                });
-                const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
-                await window.fsUpdateDoc(leaderboardRef, { totalEarned: (refUser.totalEarned || 0) + REFERRAL_POINTS });
-                await addPointsOptimized(REFERRAL_POINTS, `Referral Bonus (from ${refUser.name})`);
-                showNotification(`🎉 +${REFERRAL_POINTS} PTS from referral!`);
+        if (refId === userId) return;
+        try {
+            const userRef = window.fsDoc(window.firestore, 'users', refId);
+            const userSnap = await window.fsGetDoc(userRef);
+            if (userSnap.exists()) {
+                const refUser = userSnap.data();
+                const alreadyReferred = refUser.invitedFriends?.includes(userId);
+                if (!alreadyReferred) {
+                    await window.fsUpdateDoc(userRef, {
+                        balance: (refUser.balance || 0) + REFERRAL_POINTS,
+                        totalEarned: (refUser.totalEarned || 0) + REFERRAL_POINTS,
+                        invitedFriends: window.fsArrayUnion(userId)
+                    });
+                    const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
+                    await window.fsUpdateDoc(leaderboardRef, { totalEarned: (refUser.totalEarned || 0) + REFERRAL_POINTS });
+                    await addPointsOptimized(REFERRAL_POINTS, `Referral Bonus (from ${refUser.name})`);
+                    showNotification(`🎉 +${REFERRAL_POINTS} PTS from referral!`);
+                }
             }
-        }
+        } catch(e) { console.error("Referral error:", e); }
     }
     
     async function addPointsOptimized(pts, source) {
@@ -610,23 +674,69 @@
     // ========== GAME ==========
     function initGameCanvas() {
         const canvas = document.getElementById('gameCanvas');
-        if(!canvas) return;
-        canvas.width = GAME_WIDTH; canvas.height = GAME_HEIGHT;
-        canvas.addEventListener('touchstart', e => { e.preventDefault(); if(gameRunning){ const rect=e.target.getBoundingClientRect(); let x = (e.touches[0].clientX - rect.left) * (GAME_WIDTH / rect.width); gamePlayerX = Math.min(GAME_WIDTH-PLAYER_WIDTH, Math.max(0, x - PLAYER_WIDTH/2)); } });
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); if(gameRunning){ const rect=e.target.getBoundingClientRect(); let x = (e.touches[0].clientX - rect.left) * (GAME_WIDTH / rect.width); gamePlayerX = Math.min(GAME_WIDTH-PLAYER_WIDTH, Math.max(0, x - PLAYER_WIDTH/2)); } });
-        canvas.addEventListener('mousemove', e => { if(gameRunning){ const rect=e.target.getBoundingClientRect(); let x = (e.clientX - rect.left) * (GAME_WIDTH / rect.width); gamePlayerX = Math.min(GAME_WIDTH-PLAYER_WIDTH, Math.max(0, x - PLAYER_WIDTH/2)); } });
+        if(!canvas) {
+            console.error("Canvas not found");
+            return;
+        }
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+        
+        canvas.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            if(gameRunning){ 
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                let x = (e.touches[0].clientX - rect.left) * scaleX;
+                gamePlayerX = Math.min(GAME_WIDTH - PLAYER_WIDTH, Math.max(0, x - PLAYER_WIDTH/2)); 
+            } 
+        });
+        
+        canvas.addEventListener('touchmove', (e) => { 
+            e.preventDefault(); 
+            if(gameRunning){ 
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                let x = (e.touches[0].clientX - rect.left) * scaleX;
+                gamePlayerX = Math.min(GAME_WIDTH - PLAYER_WIDTH, Math.max(0, x - PLAYER_WIDTH/2)); 
+            } 
+        });
+        
+        canvas.addEventListener('mousemove', (e) => { 
+            if(gameRunning){ 
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                let x = (e.clientX - rect.left) * scaleX;
+                gamePlayerX = Math.min(GAME_WIDTH - PLAYER_WIDTH, Math.max(0, x - PLAYER_WIDTH/2)); 
+            } 
+        });
+        
         document.getElementById('game-best').innerText = gameBest;
         drawGame();
     }
     
     function startGame() { 
-        if(!currentUser) return;
-        if(gameRunning) return;
+        if(!currentUser) {
+            showNotification("Please wait for user data to load");
+            return;
+        }
+        if(gameRunning) {
+            showNotification("Game is already running!");
+            return;
+        }
         const remaining = MAX_GAMES_PER_DAY - gamesPlayedToday;
-        if(remaining <= 0) { showNotification("ယနေ့အတွက် ဂိမ်းဆော့ခွင့် ကုန်သွားပါပြီ။"); return; }
-        gameRunning=true; gameCoins=0; gameFrame=0; gameObstacles=[]; gameCoinsList=[]; 
-        gamePlayerX=GAME_WIDTH/2-PLAYER_WIDTH/2; document.getElementById('game-coins').innerText='0'; 
-        if(gameAnimationId) cancelAnimationFrame(gameAnimationId); gameLoop(); 
+        if(remaining <= 0) { 
+            showNotification("ယနေ့အတွက် ဂိမ်းဆော့ခွင့် ကုန်သွားပါပြီ။"); 
+            return; 
+        }
+        gameRunning = true; 
+        gameCoins = 0; 
+        gameFrame = 0; 
+        gameObstacles = []; 
+        gameCoinsList = []; 
+        gamePlayerX = GAME_WIDTH/2 - PLAYER_WIDTH/2; 
+        document.getElementById('game-coins').innerText = '0'; 
+        if(gameAnimationId) cancelAnimationFrame(gameAnimationId); 
+        gameLoop(); 
     }
     
     function gameLoop() { 
@@ -644,36 +754,74 @@
         
         for(let obs of gameObstacles){ if(gamePlayerX<obs.x+obs.width && gamePlayerX+PLAYER_WIDTH>obs.x && GAME_HEIGHT-50<obs.y+obs.height && GAME_HEIGHT-50+PLAYER_HEIGHT>obs.y){ gameOver(); return; } }
         for(let i=0;i<gameCoinsList.length;i++){ const coin=gameCoinsList[i]; if(gamePlayerX<coin.x+coin.width && gamePlayerX+PLAYER_WIDTH>coin.x && GAME_HEIGHT-50<coin.y+coin.height && GAME_HEIGHT-50+PLAYER_HEIGHT>coin.y){ gameCoinsList.splice(i,1); gameCoins++; document.getElementById('game-coins').innerText=gameCoins; i--; } }
-        drawGame(); gameAnimationId=requestAnimationFrame(gameLoop); 
+        drawGame(); 
+        gameAnimationId = requestAnimationFrame(gameLoop); 
     }
     
     function drawGame(){ 
-        const canvas=document.getElementById('gameCanvas'); if(!canvas)return; const ctx=canvas.getContext('2d'); 
+        const canvas=document.getElementById('gameCanvas'); 
+        if(!canvas) return; 
+        const ctx=canvas.getContext('2d'); 
         ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT); 
-        ctx.fillStyle='#1a472a'; ctx.fillRect(0,GAME_HEIGHT-50,GAME_WIDTH,50); 
-        ctx.fillStyle='#8B4513'; ctx.fillRect(0,GAME_HEIGHT-52,GAME_WIDTH,4);
-        // Player (golden character)
-        ctx.fillStyle='#FFD700'; ctx.fillRect(gamePlayerX,GAME_HEIGHT-50,PLAYER_WIDTH,PLAYER_HEIGHT);
-        ctx.fillStyle='#FFA500'; ctx.fillRect(gamePlayerX+6,GAME_HEIGHT-56,20,10);
-        ctx.fillStyle='#000'; ctx.fillRect(gamePlayerX+8,GAME_HEIGHT-44,6,6); ctx.fillRect(gamePlayerX+18,GAME_HEIGHT-44,6,6);
+        ctx.fillStyle='#1a472a'; 
+        ctx.fillRect(0,GAME_HEIGHT-50,GAME_WIDTH,50); 
+        ctx.fillStyle='#8B4513'; 
+        ctx.fillRect(0,GAME_HEIGHT-52,GAME_WIDTH,4);
+        ctx.fillStyle='#FFD700'; 
+        ctx.fillRect(gamePlayerX,GAME_HEIGHT-50,PLAYER_WIDTH,PLAYER_HEIGHT);
+        ctx.fillStyle='#FFA500'; 
+        ctx.fillRect(gamePlayerX+6,GAME_HEIGHT-56,20,10);
+        ctx.fillStyle='#000'; 
+        ctx.fillRect(gamePlayerX+8,GAME_HEIGHT-44,6,6); 
+        ctx.fillRect(gamePlayerX+18,GAME_HEIGHT-44,6,6);
         ctx.fillStyle='#DC2626';
-        for(let obs of gameObstacles){ ctx.fillRect(obs.x,obs.y,obs.width,obs.height); ctx.fillStyle='#991B1B'; ctx.fillRect(obs.x+4,obs.y+4,obs.width-8,obs.height-8); ctx.fillStyle='#DC2626'; }
-        for(let coin of gameCoinsList){ 
-            ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(coin.x+COIN_SIZE/2,coin.y+COIN_SIZE/2,COIN_SIZE/2,0,Math.PI*2); ctx.fill(); 
-            ctx.fillStyle='#F59E0B'; ctx.beginPath(); ctx.arc(coin.x+COIN_SIZE/2,coin.y+COIN_SIZE/2,COIN_SIZE/3,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle='#FFF'; ctx.font='bold 8px Arial'; ctx.fillText('$',coin.x+COIN_SIZE/2-3,coin.y+COIN_SIZE/2+3);
+        for(let obs of gameObstacles){ 
+            ctx.fillRect(obs.x,obs.y,obs.width,obs.height); 
+            ctx.fillStyle='#991B1B'; 
+            ctx.fillRect(obs.x+4,obs.y+4,obs.width-8,obs.height-8); 
+            ctx.fillStyle='#DC2626'; 
         }
-        ctx.fillStyle='white'; ctx.font='bold 16px Arial'; ctx.fillText('💰 '+gameCoins,12,35);
-        if(gameCoins>=50) { ctx.fillStyle='#FFD700'; ctx.font='bold 12px Arial'; ctx.fillText('🔥 '+Math.floor(gameCoins/10)+'x Speed',GAME_WIDTH-70,30); }
+        for(let coin of gameCoinsList){ 
+            ctx.fillStyle='#FFD700'; 
+            ctx.beginPath(); 
+            ctx.arc(coin.x+COIN_SIZE/2,coin.y+COIN_SIZE/2,COIN_SIZE/2,0,Math.PI*2); 
+            ctx.fill(); 
+            ctx.fillStyle='#F59E0B'; 
+            ctx.beginPath(); 
+            ctx.arc(coin.x+COIN_SIZE/2,coin.y+COIN_SIZE/2,COIN_SIZE/3,0,Math.PI*2); 
+            ctx.fill();
+            ctx.fillStyle='#FFF'; 
+            ctx.font='bold 8px Arial'; 
+            ctx.fillText('$',coin.x+COIN_SIZE/2-3,coin.y+COIN_SIZE/2+3);
+        }
+        ctx.fillStyle='white'; 
+        ctx.font='bold 16px Arial'; 
+        ctx.fillText('💰 '+gameCoins,12,35);
+        if(gameCoins>=50) { 
+            ctx.fillStyle='#FFD700'; 
+            ctx.font='bold 12px Arial'; 
+            ctx.fillText('🔥 '+Math.floor(gameCoins/10)+'x Speed',GAME_WIDTH-70,30); 
+        }
     }
     
     async function gameOver(){ 
-        gameRunning=false; if(gameAnimationId) cancelAnimationFrame(gameAnimationId); 
+        gameRunning=false; 
+        if(gameAnimationId) cancelAnimationFrame(gameAnimationId); 
         const earned=gameCoins*COIN_TO_POINTS; 
-        if(earned>0) { gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI(); await addPointsOptimized(earned,"Coin Runner Game"); }
-        if(gameCoins>gameBest){ gameBest=gameCoins; localStorage.setItem('game_best',gameBest); document.getElementById('game-best').innerText=gameBest; } 
+        if(earned>0) { 
+            gamesPlayedToday++; 
+            await saveToFirebase(); 
+            updateGameRemainingUI(); 
+            await addPointsOptimized(earned,"Coin Runner Game"); 
+        }
+        if(gameCoins>gameBest){ 
+            gameBest=gameCoins; 
+            localStorage.setItem('game_best',gameBest); 
+            document.getElementById('game-best').innerText=gameBest; 
+        } 
         const overlayStars = '⭐'.repeat(Math.min(5, Math.floor(gameCoins/20)));
-        const overlay=document.createElement('div'); overlay.className='game-overlay'; 
+        const overlay=document.createElement('div'); 
+        overlay.className='game-overlay'; 
         overlay.innerHTML=`<div class="bg-slate-900 p-6 rounded-2xl text-center border border-amber-500 max-w-[300px]"><i class="fas fa-trophy text-5xl text-amber-400 mb-3"></i><p class="text-xl font-bold text-white">${gameCoins>=30?'Great!':'Game Over!'}</p><p class="text-amber-400 mt-2">Coins: ${gameCoins}</p><p class="text-green-400">Earned: +${earned} PTS</p><p class="text-yellow-400 text-sm mt-1">${overlayStars}</p><button onclick="this.parentElement.parentElement.remove(); startGame()" class="btn-yellow px-6 py-2 mt-4 rounded-xl"><i class="fas fa-redo-alt mr-2"></i>Play Again</button><button onclick="this.parentElement.parentElement.remove()" class="bg-slate-700 px-6 py-2 mt-2 rounded-xl ml-2">Close</button></div>`; 
         document.body.appendChild(overlay); 
     }
@@ -733,8 +881,7 @@
   
     function renderRefUI() { 
         if(!userId) return;
-        const botUsername = "MMGOLDEN_bot";
-        document.getElementById('ref-link').innerHTML = `https://t.me/${botUsername}?start=${userId}`; 
+        document.getElementById('ref-link').innerHTML = `https://t.me/${BOT_USERNAME}?start=${userId}`; 
         document.getElementById('ref-count').innerText = invitedFriends.length; 
         document.getElementById('ref-earned').innerText = (invitedFriends.length * REFERRAL_POINTS).toLocaleString(); 
         const c = document.getElementById('ref-list'); 
@@ -764,38 +911,44 @@
     async function renderAdminUserTable(){ 
         const tbody = document.getElementById('admin-user-table'); 
         if(!tbody) return; 
-        const usersCollection = window.fsCollection(window.firestore, 'users');
-        const usersSnapshot = await window.fsGetDocs(usersCollection);
-        const users = [];
-        usersSnapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-        if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
-        tbody.innerHTML = users.slice(0, 50).map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
+        try {
+            const usersCollection = window.fsCollection(window.firestore, 'users');
+            const usersSnapshot = await window.fsGetDocs(usersCollection);
+            const users = [];
+            usersSnapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
+            if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
+            tbody.innerHTML = users.slice(0, 50).map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
+        } catch(e) { console.error(e); }
     }
     
     async function quickAdjustPoints(uid, amount){ 
         if(!confirm(`Add ${amount} points?`)) return; 
-        const userRef = window.fsDoc(window.firestore, 'users', uid);
-        const userSnap = await window.fsGetDoc(userRef);
-        if(userSnap.exists()){ 
-            const userData = userSnap.data(); 
-            const newBalance = (userData.balance || 0) + amount; 
-            const newTotal = (userData.totalEarned || 0) + amount; 
-            await window.fsUpdateDoc(userRef, { balance: newBalance, totalEarned: newTotal });
-            if(uid === userId){ balance = newBalance; updateBalanceUI(); } 
-            const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', uid);
-            await window.fsSetDoc(leaderboardRef, { totalEarned: newTotal, name: userData.name }, { merge: true });
-            showNotification(`Added ${amount} points`); 
-            renderAdminUserTable(); 
-        } 
+        try {
+            const userRef = window.fsDoc(window.firestore, 'users', uid);
+            const userSnap = await window.fsGetDoc(userRef);
+            if(userSnap.exists()){ 
+                const userData = userSnap.data(); 
+                const newBalance = (userData.balance || 0) + amount; 
+                const newTotal = (userData.totalEarned || 0) + amount; 
+                await window.fsUpdateDoc(userRef, { balance: newBalance, totalEarned: newTotal });
+                if(uid === userId){ balance = newBalance; updateBalanceUI(); } 
+                const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', uid);
+                await window.fsSetDoc(leaderboardRef, { totalEarned: newTotal, name: userData.name }, { merge: true });
+                showNotification(`Added ${amount} points`); 
+                renderAdminUserTable(); 
+            } 
+        } catch(e) { console.error(e); }
     }
     
     async function viewUserDetails(uid){ 
-        const userRef = window.fsDoc(window.firestore, 'users', uid);
-        const userSnap = await window.fsGetDoc(userRef);
-        if(userSnap.exists()){ 
-            const user = userSnap.data(); 
-            alert(`📋 User Details\n\nName: ${user.name || 'N/A'}\nID: ${uid}\nBalance: ${(user.balance || 0).toLocaleString()}\nTotal Earned: ${(user.totalEarned || 0).toLocaleString()}\nTasks: ${(user.completedTasks || []).length}\nQuizzes: ${(user.completedQuizzes || []).length}\nReferrals: ${(user.invitedFriends || []).length}`); 
-        } 
+        try {
+            const userRef = window.fsDoc(window.firestore, 'users', uid);
+            const userSnap = await window.fsGetDoc(userRef);
+            if(userSnap.exists()){ 
+                const user = userSnap.data(); 
+                alert(`📋 User Details\n\nName: ${user.name || 'N/A'}\nID: ${uid}\nBalance: ${(user.balance || 0).toLocaleString()}\nTotal Earned: ${(user.totalEarned || 0).toLocaleString()}\nTasks: ${(user.completedTasks || []).length}\nQuizzes: ${(user.completedQuizzes || []).length}\nReferrals: ${(user.invitedFriends || []).length}`); 
+            } 
+        } catch(e) { console.error(e); }
     }
     
     async function adjustUserPoints(){ 
@@ -803,22 +956,24 @@
         const points = parseInt(document.getElementById('adjust-points').value);
         const action = document.getElementById('adjust-action').value;
         if(!searchTerm || isNaN(points)){ alert("Enter user name/ID and points"); return; }
-        const usersCollection = window.fsCollection(window.firestore, 'users');
-        const usersSnapshot = await window.fsGetDocs(usersCollection);
-        let foundUser = null, foundUid = null;
-        for (const doc of usersSnapshot.docs) {
-            const userData = doc.data();
-            if (userData.name === searchTerm || doc.id === searchTerm) {
-                foundUser = userData; foundUid = doc.id; break;
+        try {
+            const usersCollection = window.fsCollection(window.firestore, 'users');
+            const usersSnapshot = await window.fsGetDocs(usersCollection);
+            let foundUser = null, foundUid = null;
+            for (const doc of usersSnapshot.docs) {
+                const userData = doc.data();
+                if (userData.name === searchTerm || doc.id === searchTerm) {
+                    foundUser = userData; foundUid = doc.id; break;
+                }
             }
-        }
-        if(!foundUser){ alert("User not found"); return; }
-        let newBalance = foundUser.balance || 0, newTotal = foundUser.totalEarned || 0;
-        if(action === 'add'){ newBalance += points; newTotal += points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance, totalEarned: newTotal }); showNotification(`Added ${points} points`); }
-        else { if(points > newBalance){ alert("Not enough points!"); return; } newBalance -= points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance }); showNotification(`Removed ${points} points`); }
-        await window.fsSetDoc(window.fsDoc(window.firestore, 'leaderboard', foundUid), { totalEarned: newTotal, name: foundUser.name }, { merge: true });
-        if(foundUid === userId){ balance = newBalance; updateBalanceUI(); }
-        renderAdminUserTable();
+            if(!foundUser){ alert("User not found"); return; }
+            let newBalance = foundUser.balance || 0, newTotal = foundUser.totalEarned || 0;
+            if(action === 'add'){ newBalance += points; newTotal += points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance, totalEarned: newTotal }); showNotification(`Added ${points} points`); }
+            else { if(points > newBalance){ alert("Not enough points!"); return; } newBalance -= points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance }); showNotification(`Removed ${points} points`); }
+            await window.fsSetDoc(window.fsDoc(window.firestore, 'leaderboard', foundUid), { totalEarned: newTotal, name: foundUser.name }, { merge: true });
+            if(foundUid === userId){ balance = newBalance; updateBalanceUI(); }
+            renderAdminUserTable();
+        } catch(e) { console.error(e); }
     }
     
     function renderAdminWithdrawals(){ const c = document.getElementById('admin-withdraw-list'); if(!c) return; c.innerHTML = '<p class="text-slate-500 text-center py-4">No pending withdrawal requests</p>'; }
@@ -871,18 +1026,22 @@
     
     async function setupAdminList() { 
         if(!window.firestore) return; 
-        const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
-        const adminSnap = await window.fsGetDoc(adminRef);
-        if(!adminSnap.exists()){ 
-            await window.fsSetDoc(adminRef, { ids: ["6099430589"] });
-            console.log("Admin list initialized"); 
-        } 
+        try {
+            const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
+            const adminSnap = await window.fsGetDoc(adminRef);
+            if(!adminSnap.exists()){ 
+                await window.fsSetDoc(adminRef, { ids: ["6099430589"] });
+                console.log("Admin list initialized"); 
+            } 
+        } catch(e) { console.error("Setup admin error:", e); }
     }
     
     // ========== INIT ==========
     setupAdminList();
-    initGameCanvas();
-    initTelegramUser();
+    setTimeout(() => {
+        initGameCanvas();
+        initTelegramUser();
+    }, 500);
 </script>
 </body>
 </html>
