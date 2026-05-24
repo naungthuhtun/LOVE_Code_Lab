@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>MM GOLDEN - Myanmar Earn Money App</title>
+    <title>MM GOLDEN - Telegram Mini App</title>
     
     <!-- Firebase SDK (Firestore Version) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, getDocs, query, where, orderBy, limit, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyAou0HLlJEhcarQw0FocghOPw9AAMsZlq8",
@@ -23,16 +22,9 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app);
-        const googleProvider = new GoogleAuthProvider();
         
         // Make available globally - Firestore Version
         window.firestore = db;
-        window.firebaseAuth = auth;
-        window.firebaseGoogleProvider = googleProvider;
-        window.firebaseSignInWithPopup = signInWithPopup;
-        window.firebaseOnAuthStateChanged = onAuthStateChanged;
-        window.firebaseSignOut = signOut;
         
         // Firestore functions
         window.fsDoc = doc;
@@ -57,7 +49,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        /* All CSS styles remain EXACTLY the same - no changes */
         @import url('https://fonts.googleapis.com/css2?family=Pyidaungsu:wght@400;500;600;700&display=swap');
         * { user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Pyidaungsu', sans-serif; background: #0a0e1a; color: white; overflow-x: hidden; min-height: 100vh; }
@@ -79,9 +70,6 @@
         .gradient-text { background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         #gameCanvas { background: linear-gradient(180deg, #1a472a 0%, #0d2818 100%); border-radius: 20px; display: block; margin: 0 auto; cursor: pointer; }
         .game-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-        .modal-content { max-width: 350px; width: 90%; animation: pop 0.3s ease; }
-        @keyframes pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         .admin-table { width: 100%; font-size: 10px; border-collapse: collapse; }
         .admin-table th, .admin-table td { padding: 8px 6px; border-bottom: 1px solid rgba(251,191,36,0.15); }
         .admin-table th { color: #fbbf24; background: rgba(0,0,0,0.3); }
@@ -110,7 +98,6 @@
 </head>
 <body>
 
-<!-- HTML STRUCTURE REMAINS EXACTLY THE SAME - no changes -->
 <div class="fixed top-0 w-full bg-[#0a0e1a]/95 backdrop-blur-sm p-4 z-50 border-b border-amber-500/20">
     <div class="max-w-md mx-auto">
         <div class="flex justify-between items-center mb-2">
@@ -131,9 +118,6 @@
                 <span id="display-name" class="text-sm font-medium text-amber-300">Loading...</span>
             </div>
             <div class="flex gap-2">
-                <button id="google-login-btn" onclick="showGoogleLogin()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition">
-                    <i class="fab fa-google mr-1"></i> Login
-                </button>
                 <button onclick="showUserProfile()" class="text-xs text-blue-400 bg-blue-900/30 px-3 py-1.5 rounded-full hidden" id="profile-btn">
                     <i class="fas fa-id-card"></i> Profile
                 </button>
@@ -146,7 +130,7 @@
 </div>
 
 <main class="max-w-md mx-auto pt-28 px-4">
-    <!-- ALL SECTIONS REMAIN EXACTLY THE SAME -->
+    <!-- Home Section -->
     <div id="sec-home" class="section active space-y-5">
         <div class="gold-card p-6 text-center">
             <div class="flex items-center justify-between mb-4">
@@ -184,6 +168,7 @@
         </button>
     </div>
 
+    <!-- Quiz Section -->
     <div id="sec-quiz" class="section space-y-5">
         <div class="gold-card p-6 text-center">
             <div class="flex justify-center mb-3"><div class="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center"><i class="fas fa-brain text-3xl text-purple-400"></i></div></div>
@@ -213,6 +198,7 @@
         </div>
     </div>
 
+    <!-- Invite Section -->
     <div id="sec-invite" class="section space-y-5">
         <div class="gold-card p-6 text-center">
             <div class="flex justify-center mb-4"><div class="w-20 h-20 bg-gradient-to-br from-green-500/30 to-emerald-600/30 rounded-2xl flex items-center justify-center"><i class="fas fa-users text-3xl text-green-400"></i></div></div>
@@ -237,6 +223,7 @@
         </div>
     </div>
 
+    <!-- Tasks Section -->
     <div id="sec-tasks" class="section space-y-5">
         <div id="task-list-display" class="space-y-3"></div>
         <div class="gold-card p-4">
@@ -245,6 +232,7 @@
         </div>
     </div>
 
+    <!-- Profile Section -->
     <div id="sec-profile" class="section space-y-5">
         <div class="gold-card p-6">
             <div class="flex items-center gap-3 mb-6"><div class="w-14 h-14 bg-blue-500/20 rounded-2xl flex items-center justify-center"><i class="fas fa-id-card text-2xl text-blue-400"></i></div><div><h3 class="text-white font-bold text-xl">My Profile</h3></div></div>
@@ -259,6 +247,7 @@
         <button onclick="showSec('sec-home')" class="w-full text-slate-500 mt-2 py-3">← Back to Home</button>
     </div>
 
+    <!-- Withdraw Section -->
     <div id="sec-withdraw" class="section">
         <div class="gold-card p-6">
             <div class="flex items-center gap-3 mb-6"><div class="w-14 h-14 bg-green-600/20 rounded-2xl flex items-center justify-center"><i class="fas fa-university text-2xl text-green-400"></i></div><div><h3 class="text-white font-bold text-xl">Withdrawal</h3><p class="text-[10px] text-green-400">ငွေထုတ်ယူရန် (အနည်းဆုံး 100,000 PTS)</p></div></div>
@@ -281,6 +270,7 @@
         </div>
     </div>
 
+    <!-- About & Admin Section -->
     <div id="sec-about" class="section space-y-5">
         <div class="gold-card p-6">
             <div class="text-center mb-6"><div onclick="handleSecret()" class="inline-block cursor-pointer"><i class="fas fa-crown text-5xl text-amber-400 mb-2"></i><h3 class="text-2xl font-black gradient-text">MM GOLDEN ELITE</h3><p class="text-[9px] text-slate-500 mt-1">Click logo for admin access</p></div></div>
@@ -339,18 +329,8 @@
     <button onclick="showSec('sec-about')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-cog text-xl"></i><span class="text-[9px] mt-0.5">Setting</span></button>
 </nav>
 
-<div id="google-login-modal" class="modal" style="display:none">
-    <div class="modal-content gold-card p-8 text-center">
-        <i class="fab fa-google text-5xl text-amber-400 mb-4"></i>
-        <h3 class="text-xl font-bold text-white mb-2">Welcome to MM GOLDEN</h3>
-        <p class="text-sm text-slate-400 mb-6">Sign in with Google to start earning</p>
-        <button onclick="googleSignIn()" class="w-full btn-yellow py-3 rounded-xl text-lg font-bold mb-3"><i class="fab fa-google mr-2"></i>Sign in with Google</button>
-        <button onclick="closeGoogleModal()" class="w-full bg-slate-700 py-2 rounded-xl text-sm">Cancel</button>
-    </div>
-</div>
-
 <script>
-    // ========== CONFIGURATION (unchanged) ==========
+    // ========== CONFIGURATION ==========
     const MIN_WITHDRAW_POINTS = 100000;
     const USD_PER_POINT = 1 / 100000;
     const COIN_TO_POINTS = 10;
@@ -364,9 +344,10 @@
         { target: 500, reward: 550 }
     ];
     
-    // ========== GLOBAL STATE (unchanged) ==========
+    // ========== GLOBAL STATE ==========
     let currentUser = null;
     let userId = null;
+    let userName = '';
     let balance = 0;
     let invitedFriends = [];
     let dailyBonusClaimed = false;
@@ -386,8 +367,6 @@
     let quizzesCache = [];
     let tasksCache = [];
     let usersCache = {};
-    let withdrawalsCache = [];
-    let logsCache = [];
     
     const userRequestCounts = new Map();
     function checkRateLimit(uid, limit = 60, windowMs = 60000) {
@@ -409,8 +388,7 @@
                 const userRef = window.fsDoc(window.firestore, 'users', userId);
                 await window.fsSetDoc(userRef, {
                     id: userId,
-                    name: currentUser?.name || 'User',
-                    email: currentUser?.email || '',
+                    name: userName || 'User',
                     balance: balance,
                     totalEarned: currentUser?.totalEarned || 0,
                     invitedFriends: invitedFriends || [],
@@ -425,84 +403,52 @@
                     lastActive: new Date().toLocaleString()
                 }, { merge: true });
                 
-                // Update leaderboard
                 const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', userId);
                 await window.fsSetDoc(leaderboardRef, {
-                    name: currentUser?.name || 'User',
+                    name: userName || 'User',
                     totalEarned: currentUser?.totalEarned || 0
                 }, { merge: true });
                 
-                // Update users cache
                 usersCache[userId] = currentUser;
             } catch(e) { console.error("Save error:", e); }
         }, 1000);
     }
     
-    // ========== GOOGLE LOGIN (unchanged) ==========
-    function showGoogleLogin() { document.getElementById('google-login-modal').style.display = 'flex'; }
-    function closeGoogleModal() { document.getElementById('google-login-modal').style.display = 'none'; }
-    
-    async function googleSignIn() {
-        try {
-            const result = await window.firebaseSignInWithPopup(window.firebaseAuth, window.firebaseGoogleProvider);
-            const user = result.user;
-            userId = user.uid;
-            
-            const userRef = window.fsDoc(window.firestore, 'users', userId);
-            const userSnap = await window.fsGetDoc(userRef);
-            
-            if (userSnap.exists()) {
-                const data = userSnap.data();
-                currentUser = { id: userId, name: data.name || user.displayName, email: user.email, balance: data.balance || 0, totalEarned: data.totalEarned || 0 };
-                balance = currentUser.balance;
-                invitedFriends = data.invitedFriends || [];
-                completedTasks = data.completedTasks || [];
-                completedQuizzes = data.completedQuizzes || [];
-                totalQuizzesAnswered = data.totalQuizzesAnswered || 0;
-                claimedMilestones = data.claimedMilestones || [];
-                dailyBonusClaimed = data.dailyBonusClaimed || false;
-                lastBonusDate = data.lastBonusDate || '';
-                gamesPlayedToday = data.gamesPlayedToday || 0;
-                lastGameDate = data.lastGameDate || '';
-            } else {
-                currentUser = { id: userId, name: user.displayName || user.email.split('@')[0], email: user.email, balance: 0, totalEarned: 0 };
-                balance = 0;
-                await saveToFirebase();
-            }
-            
-            document.getElementById('display-name').innerText = currentUser.name;
-            document.getElementById('profile-name').innerText = currentUser.name;
-            document.getElementById('google-login-btn').innerHTML = '<i class="fas fa-user-check mr-1"></i> ' + currentUser.name.substring(0, 10);
-            document.getElementById('profile-btn').classList.remove('hidden');
-            closeGoogleModal();
-            
-            // Check admin
-            const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
-            const adminSnap = await window.fsGetDoc(adminRef);
-            const adminList = adminSnap.exists() ? adminSnap.data().ids || [] : [];
-            isAdmin = adminList.includes(userId);
-            if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
-            
-            await loadUserData();
-            updateBalanceUI();
-            renderRefUI();
-            renderTasks();
-            renderQuiz();
-            showNotification(`Welcome ${currentUser.name}!`);
-            
-            const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-            if (startParam && startParam !== userId) setTimeout(() => handleReferral(startParam), 2000);
-        } catch(e) { console.error("Google sign in error:", e); alert("Login failed: " + e.message); }
-    }
-    
-    async function loadUserData() {
-        if (!userId) return;
+    // ========== TELEGRAM LOGIN (ONLY - No Google) ==========
+    async function initTelegramUser() {
+        const tg = window.Telegram?.WebApp;
         
+        if (!tg) {
+            document.getElementById('display-name').innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Please open in Telegram';
+            return;
+        }
+        
+        tg.ready();
+        tg.expand();
+        const user = tg.initDataUnsafe?.user;
+        
+        if (!user) {
+            document.getElementById('display-name').innerHTML = '<i class="fas fa-user-slash mr-1"></i>No user data';
+            return;
+        }
+        
+        // Get Telegram User ID and Name
+        userId = user.id.toString();
+        userName = user.first_name || (user.username ? '@' + user.username : 'User');
+        if (user.last_name) userName += ' ' + user.last_name;
+        
+        document.getElementById('display-name').innerHTML = `<i class="fab fa-telegram mr-1"></i>${userName}`;
+        document.getElementById('profile-name').innerText = userName;
+        document.getElementById('profile-btn').classList.remove('hidden');
+        
+        // Load or create user in Firestore
         const userRef = window.fsDoc(window.firestore, 'users', userId);
         const userSnap = await window.fsGetDoc(userRef);
+        
         if (userSnap.exists()) {
             const data = userSnap.data();
-            balance = data.balance || 0;
+            currentUser = { id: userId, name: data.name || userName, balance: data.balance || 0, totalEarned: data.totalEarned || 0 };
+            balance = currentUser.balance;
             invitedFriends = data.invitedFriends || [];
             completedTasks = data.completedTasks || [];
             completedQuizzes = data.completedQuizzes || [];
@@ -512,7 +458,35 @@
             lastBonusDate = data.lastBonusDate || '';
             gamesPlayedToday = data.gamesPlayedToday || 0;
             lastGameDate = data.lastGameDate || '';
+        } else {
+            currentUser = { id: userId, name: userName, balance: 0, totalEarned: 0 };
+            balance = 0;
+            await saveToFirebase();
         }
+        
+        // Check Admin (Admin IDs stored in Firestore)
+        const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
+        const adminSnap = await window.fsGetDoc(adminRef);
+        const adminList = adminSnap.exists() ? (adminSnap.data().ids || []) : [];
+        isAdmin = adminList.includes(userId);
+        if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
+        
+        // Check referral from start parameter
+        const startParam = tg.initDataUnsafe?.start_param;
+        if (startParam && startParam !== userId) {
+            setTimeout(() => handleReferral(startParam), 2000);
+        }
+        
+        await loadUserData();
+        updateBalanceUI();
+        renderRefUI();
+        renderTasks();
+        renderQuiz();
+        showNotification(`Welcome ${userName}! 🎉`);
+    }
+    
+    async function loadUserData() {
+        if (!userId) return;
         
         const today = new Date().toDateString();
         if (lastGameDate !== today) { gamesPlayedToday = 0; lastGameDate = today; await saveToFirebase(); }
@@ -669,7 +643,7 @@
     }
     
     async function claimDailyBonus() {
-        if (!currentUser) { showGoogleLogin(); return; }
+        if (!currentUser) return;
         const today = new Date().toDateString();
         if (dailyBonusClaimed && lastBonusDate === today) { alert("နောက်တစ်နေ့မှ ထပ်မံရယူနိုင်ပါသည်။"); return; }
         const btn = document.getElementById('daily-bonus-btn');
@@ -682,7 +656,7 @@
         setTimeout(() => { btn.innerHTML = '<i class="fas fa-gift mr-2"></i>Claim Daily Bonus (+100 PTS)'; btn.disabled = false; }, 3000);
     }
     
-    // ========== GAME (unchanged) ==========
+    // ========== GAME ==========
     function initGameCanvas() {
         const canvas = document.getElementById('gameCanvas');
         if(!canvas) return;
@@ -695,7 +669,7 @@
     }
     
     function startGame() { 
-        if(!currentUser) { showGoogleLogin(); return; }
+        if(!currentUser) return;
         if(gameRunning) return;
         const remaining = MAX_GAMES_PER_DAY - gamesPlayedToday;
         if(remaining <= 0) { showNotification("ယနေ့အတွက် ဂိမ်းဆော့ခွင့် ကုန်သွားပါပြီ။"); return; }
@@ -818,7 +792,7 @@
     
     function copyRef(){ navigator.clipboard.writeText(document.getElementById('ref-link').innerHTML); alert("Link copied!"); }
     function showUserProfile(){ showSec('sec-profile'); }
-    function renderUserProfile(){ document.getElementById('profile-name').innerText = currentUser?.name || 'User'; document.getElementById('profile-total').innerText = (currentUser?.totalEarned || 0).toLocaleString(); }
+    function renderUserProfile(){ document.getElementById('profile-name').innerText = userName || 'User'; document.getElementById('profile-total').innerText = (currentUser?.totalEarned || 0).toLocaleString(); }
     function renderUserWithdrawalHistory(){ const c = document.getElementById('user-withdrawal-history'); if(!c) return; c.innerHTML = '<div class="text-center text-slate-500 py-4">No withdrawal requests yet</div>'; }
     function renderUserPersonalActivity(){ const c = document.getElementById('user-activity-log-personal'); if(!c) return; c.innerHTML = '<div class="text-center text-slate-500 py-4">Activity log will appear here</div>'; }
     function copyUserId(){ if(userId){ navigator.clipboard.writeText(userId); showNotification("User ID copied!"); } }
@@ -826,20 +800,18 @@
     let selectedMethod = 'kapy';
     function updateWithdrawMethod(m){ selectedMethod = m; }
     function updateWithdrawUSD(){ const amt = parseInt(document.getElementById('w-amt').value) || 0; document.getElementById('submit-withdraw-btn').disabled = (amt < MIN_WITHDRAW_POINTS || amt > balance); }
-    function checkWithdrawEligibility(){ if(!currentUser){ showGoogleLogin(); return false; } if(balance < MIN_WITHDRAW_POINTS){ alert(`Need ${MIN_WITHDRAW_POINTS.toLocaleString()} PTS`); return false; } showSec('sec-withdraw'); return true; }
+    function checkWithdrawEligibility(){ if(!currentUser) return false; if(balance < MIN_WITHDRAW_POINTS){ alert(`Need ${MIN_WITHDRAW_POINTS.toLocaleString()} PTS`); return false; } showSec('sec-withdraw'); return true; }
     async function submitWithdraw(){ const name = document.getElementById('w-name').value.trim(), phone = document.getElementById('w-phone').value.trim(), amount = parseInt(document.getElementById('w-amt').value); if(!name || !phone || isNaN(amount)){ alert("Fill all fields"); return; } if(amount < MIN_WITHDRAW_POINTS || amount > balance){ alert("Invalid amount"); return; } const usdAmount = (amount * USD_PER_POINT).toFixed(4); if(!confirm(`${selectedMethod === 'kapy' ? 'Kpay' : 'Wave'}\n${name}\n${amount.toLocaleString()} PTS = $${usdAmount} USD\nConfirm?`)) return; balance -= amount; await saveToFirebase(); updateBalanceUI(); alert("✅ Withdrawal request submitted!"); showSec('sec-home'); }
     
-    // ========== ADMIN FUNCTIONS (Firestore versions) ==========
+    // ========== ADMIN FUNCTIONS ==========
     async function renderAdminUserTable(){ 
         const tbody = document.getElementById('admin-user-table'); 
         if(!tbody) return; 
-        
         const usersCollection = window.fsCollection(window.firestore, 'users');
         const usersSnapshot = await window.fsGetDocs(usersCollection);
         const users = [];
         usersSnapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-        
-        if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
+        if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></td>'; return; }
         tbody.innerHTML = users.slice(0, 50).map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
     }
     
@@ -874,34 +846,19 @@
         const points = parseInt(document.getElementById('adjust-points').value);
         const action = document.getElementById('adjust-action').value;
         if(!searchTerm || isNaN(points)){ alert("Enter user name/ID and points"); return; }
-        
         const usersCollection = window.fsCollection(window.firestore, 'users');
         const usersSnapshot = await window.fsGetDocs(usersCollection);
-        let foundUser = null;
-        let foundUid = null;
+        let foundUser = null, foundUid = null;
         for (const doc of usersSnapshot.docs) {
             const userData = doc.data();
             if (userData.name === searchTerm || doc.id === searchTerm) {
-                foundUser = userData;
-                foundUid = doc.id;
-                break;
+                foundUser = userData; foundUid = doc.id; break;
             }
         }
         if(!foundUser){ alert("User not found"); return; }
-        
-        let newBalance = foundUser.balance || 0;
-        let newTotal = foundUser.totalEarned || 0;
-        if(action === 'add'){ 
-            newBalance += points; 
-            newTotal += points; 
-            await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance, totalEarned: newTotal });
-            showNotification(`Added ${points} points`); 
-        } else { 
-            if(points > newBalance){ alert("Not enough points!"); return; } 
-            newBalance -= points; 
-            await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance });
-            showNotification(`Removed ${points} points`); 
-        }
+        let newBalance = foundUser.balance || 0, newTotal = foundUser.totalEarned || 0;
+        if(action === 'add'){ newBalance += points; newTotal += points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance, totalEarned: newTotal }); showNotification(`Added ${points} points`); }
+        else { if(points > newBalance){ alert("Not enough points!"); return; } newBalance -= points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance }); showNotification(`Removed ${points} points`); }
         await window.fsSetDoc(window.fsDoc(window.firestore, 'leaderboard', foundUid), { totalEarned: newTotal, name: foundUser.name }, { merge: true });
         if(foundUid === userId){ balance = newBalance; updateBalanceUI(); }
         renderAdminUserTable();
@@ -910,20 +867,14 @@
     function renderAdminWithdrawals(){ const c = document.getElementById('admin-withdraw-list'); if(!c) return; c.innerHTML = '<p class="text-slate-500 text-center py-4">No pending withdrawal requests</p>'; }
     
     async function addAdminTask(){ 
-        const title = document.getElementById('task-title').value.trim(); 
-        const link = document.getElementById('task-link').value.trim(); 
-        const type = document.getElementById('task-type').value;
-        const reward = parseInt(document.getElementById('task-reward').value); 
+        const title = document.getElementById('task-title').value.trim(), link = document.getElementById('task-link').value.trim(), type = document.getElementById('task-type').value, reward = parseInt(document.getElementById('task-reward').value); 
         if(!title || !link || isNaN(reward)){ alert("Fill all fields"); return; } 
         const newId = Date.now().toString(); 
         const newTask = { id: newId, title, link, reward, type }; 
         tasksCache.push(newTask); 
-        const taskRef = window.fsDoc(window.firestore, 'tasks', newId);
-        await window.fsSetDoc(taskRef, newTask);
-        renderAdminTaskList(); 
-        renderTasks(); 
-        document.getElementById('task-title').value = ''; 
-        document.getElementById('task-link').value = ''; 
+        await window.fsSetDoc(window.fsDoc(window.firestore, 'tasks', newId), newTask);
+        renderAdminTaskList(); renderTasks(); 
+        document.getElementById('task-title').value = ''; document.getElementById('task-link').value = ''; 
         showNotification("Task added!"); 
     }
     
@@ -938,19 +889,14 @@
     async function deleteAdminTask(id){ if(confirm("Delete?")){ tasksCache = tasksCache.filter(t => t.id !== id); await window.fsDeleteDoc(window.fsDoc(window.firestore, 'tasks', id)); renderAdminTaskList(); renderTasks(); showNotification("Task deleted"); } }
     
     async function addQuizQuestion(){ 
-        const q = document.getElementById('quiz-question').value.trim(); 
-        const a = document.getElementById('quiz-answer').value.trim(); 
-        const p = parseInt(document.getElementById('quiz-points').value); 
+        const q = document.getElementById('quiz-question').value.trim(), a = document.getElementById('quiz-answer').value.trim(), p = parseInt(document.getElementById('quiz-points').value); 
         if(!q || !a || isNaN(p)){ alert("Fill all fields"); return; } 
         const newId = Date.now().toString(); 
         const newQuiz = { id: newId, q, a, p }; 
         quizzesCache.push(newQuiz); 
-        const quizRef = window.fsDoc(window.firestore, 'quizzes', newId);
-        await window.fsSetDoc(quizRef, { q, a, p });
-        renderQuizList(); 
-        renderQuiz(); 
-        document.getElementById('quiz-question').value = ''; 
-        document.getElementById('quiz-answer').value = ''; 
+        await window.fsSetDoc(window.fsDoc(window.firestore, 'quizzes', newId), { q, a, p });
+        renderQuizList(); renderQuiz(); 
+        document.getElementById('quiz-question').value = ''; document.getElementById('quiz-answer').value = ''; 
         showNotification("Quiz added! Users can now answer it."); 
     }
     
@@ -971,7 +917,7 @@
         const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
         const adminSnap = await window.fsGetDoc(adminRef);
         if(!adminSnap.exists()){ 
-            await window.fsSetDoc(adminRef, { ids: ["5494834672"] });
+            await window.fsSetDoc(adminRef, { ids: ["6099430589"] });  // <-- သင့် Telegram User ID ထည့်ပါ
             console.log("Admin list initialized"); 
         } 
     }
@@ -979,51 +925,7 @@
     // ========== INIT ==========
     setupAdminList();
     initGameCanvas();
-    
-    window.addEventListener('load', () => {
-        if (window.firebaseOnAuthStateChanged) {
-            window.firebaseOnAuthStateChanged(window.firebaseAuth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    const userRef = window.fsDoc(window.firestore, 'users', userId);
-                    const userSnap = await window.fsGetDoc(userRef);
-                    if (userSnap.exists()) {
-                        const data = userSnap.data();
-                        currentUser = { id: userId, name: data.name || user.displayName, email: user.email, balance: data.balance || 0, totalEarned: data.totalEarned || 0 };
-                        balance = currentUser.balance;
-                        invitedFriends = data.invitedFriends || [];
-                        completedTasks = data.completedTasks || [];
-                        completedQuizzes = data.completedQuizzes || [];
-                        totalQuizzesAnswered = data.totalQuizzesAnswered || 0;
-                        claimedMilestones = data.claimedMilestones || [];
-                        dailyBonusClaimed = data.dailyBonusClaimed || false;
-                        lastBonusDate = data.lastBonusDate || '';
-                        gamesPlayedToday = data.gamesPlayedToday || 0;
-                        lastGameDate = data.lastGameDate || '';
-                    } else {
-                        currentUser = { id: userId, name: user.displayName || user.email.split('@')[0], email: user.email, balance: 0, totalEarned: 0 };
-                        await saveToFirebase();
-                    }
-                    document.getElementById('display-name').innerText = currentUser.name;
-                    document.getElementById('profile-name').innerText = currentUser.name;
-                    document.getElementById('google-login-btn').innerHTML = '<i class="fas fa-user-check mr-1"></i> ' + currentUser.name.substring(0, 10);
-                    document.getElementById('profile-btn').classList.remove('hidden');
-                    
-                    const adminRef = window.fsDoc(window.firestore, 'admins', 'list');
-                    const adminSnap = await window.fsGetDoc(adminRef);
-                    const adminList = adminSnap.exists() ? adminSnap.data().ids || [] : [];
-                    isAdmin = adminList.includes(userId);
-                    if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
-                    
-                    await loadUserData();
-                    updateBalanceUI();
-                    renderRefUI();
-                    renderTasks();
-                    renderQuiz();
-                }
-            });
-        }
-    });
+    initTelegramUser();
 </script>
 </body>
 </html>
