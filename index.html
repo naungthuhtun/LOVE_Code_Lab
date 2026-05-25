@@ -744,41 +744,67 @@
         if (playBtn) { if (remaining <= 0) { playBtn.disabled = true; playBtn.innerHTML = '🔒 ယနေ့ပွဲစဉ်ကုန်ပြီ'; } else { playBtn.disabled = false; playBtn.innerHTML = '▶️ Play'; } }
     }
     
-    // ========== FIXED REFERRAL - INVITER GETS 500 PTS ==========
+    // ========== REFERRAL SYSTEM - FIXED ==========
     async function handleReferral(refId) {
-    if (refId === userId) return;
-    try {
-        // ဖိတ်ခေါ်သူ (inviter) ရဲ့ data ကိုယူ
-        const inviterRef = window.fsDoc(window.firestore, 'users', refId);
-        const inviterSnap = await window.fsGetDoc(inviterRef);
-        
-        if (inviterSnap.exists()) {
-            const inviterData = inviterSnap.data();
-            const alreadyReferred = inviterData.invitedFriends?.includes(userId);
+        if (refId === userId) return;
+        try {
+            console.log("🔗 Referral: Inviter=", refId, "New User=", userId);
             
-            if (!alreadyReferred) {
-                // ဖိတ်ခေါ်သူကို 500 PTS ပေး
-                const newInviterBalance = (inviterData.balance || 0) + REFERRAL_POINTS;
-                const newInviterTotal = (inviterData.totalEarned || 0) + REFERRAL_POINTS;
-                
-                await window.fsUpdateDoc(inviterRef, {
-                    balance: newInviterBalance,
-                    totalEarned: newInviterTotal,
-                    invitedFriends: window.fsArrayUnion(userId)
-                });
-                
-                // Leaderboard update
-                const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
-                await window.fsSetDoc(leaderboardRef, { 
-                    totalEarned: newInviterTotal, 
-                    name: inviterData.name 
-                }, { merge: true });
-                
-                showNotification(`🎉 +${REFERRAL_POINTS} PTS given to ${inviterData.name} for inviting you!`);
-             }
-         }
-      } catch(e) { console.error("Referral error:", e); }
-  }
+            // Get inviter (referrer) data
+            const inviterRef = window.fsDoc(window.firestore, 'users', refId);
+            const inviterSnap = await window.fsGetDoc(inviterRef);
+            
+            if (!inviterSnap.exists()) {
+                console.log("Inviter not found:", refId);
+                return;
+            }
+            
+            const inviterData = inviterSnap.data();
+            
+            // Check if already referred
+            const alreadyReferred = inviterData.invitedFriends?.includes(userId);
+            if (alreadyReferred) {
+                console.log("Already referred before");
+                return;
+            }
+            
+            console.log("Adding referral bonus to inviter...");
+            
+            // Give 500 PTS to inviter
+            const newInviterBalance = (inviterData.balance || 0) + REFERRAL_POINTS;
+            const newInviterTotal = (inviterData.totalEarned || 0) + REFERRAL_POINTS;
+            
+            await window.fsUpdateDoc(inviterRef, {
+                balance: newInviterBalance,
+                totalEarned: newInviterTotal,
+                invitedFriends: window.fsArrayUnion(userId)
+            });
+            
+            // Update leaderboard for inviter
+            const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
+            await window.fsSetDoc(leaderboardRef, { 
+                totalEarned: newInviterTotal, 
+                name: inviterData.name 
+            }, { merge: true });
+            
+            // Update UI if current user is the inviter
+            if (userId === refId) {
+                balance = newInviterBalance;
+                if (currentUser) {
+                    currentUser.balance = balance;
+                    currentUser.totalEarned = newInviterTotal;
+                }
+                updateBalanceUI();
+                renderRefUI();
+            }
+            
+            showNotification(`🎉 +${REFERRAL_POINTS} PTS given to ${inviterData.name} for inviting you!`);
+            
+        } catch(e) { 
+            console.error("Referral error:", e); 
+            showNotification("Referral processing, but you can still use the app!");
+        }
+    }
     
     async function addPointsOptimized(pts, source) {
         balance += pts;
@@ -1117,7 +1143,7 @@
     
     async function quickAdjustPoints(uid, amount){ 
         if (!isAdmin) { showNotification("Not authorized!"); return; }
-        if(!confirm(`Add ${amount} points?`)) return; 
+        if(!confirm(`Add ${amount} points to this user?`)) return; 
         try {
             const userRef = window.fsDoc(window.firestore, 'users', uid);
             const userSnap = await window.fsGetDoc(userRef);
@@ -1129,7 +1155,7 @@
                 if(uid === userId){ balance = newBalance; updateBalanceUI(); } 
                 const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', uid);
                 await window.fsSetDoc(leaderboardRef, { totalEarned: newTotal, name: userData.name }, { merge: true });
-                showNotification(`Added ${amount} points!`); 
+                showNotification(`Added ${amount} points to user!`); 
                 renderAdminUserTable(); 
             } 
         } catch(e) { console.error(e); }
@@ -1164,8 +1190,8 @@
             }
             if(!foundUser){ alert("User not found"); return; }
             let newBalance = foundUser.balance || 0, newTotal = foundUser.totalEarned || 0;
-            if(action === 'add'){ newBalance += points; newTotal += points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance, totalEarned: newTotal }); showNotification(`Added ${points} points`); }
-            else { if(points > newBalance){ alert("Not enough points!"); return; } newBalance -= points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance }); showNotification(`Removed ${points} points`); }
+            if(action === 'add'){ newBalance += points; newTotal += points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance, totalEarned: newTotal }); showNotification(`Added ${points} points to ${foundUser.name}`); }
+            else { if(points > newBalance){ alert("Not enough points!"); return; } newBalance -= points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance }); showNotification(`Removed ${points} points from ${foundUser.name}`); }
             await window.fsSetDoc(window.fsDoc(window.firestore, 'leaderboard', foundUid), { totalEarned: newTotal, name: foundUser.name }, { merge: true });
             if(foundUid === userId){ balance = newBalance; updateBalanceUI(); }
             renderAdminUserTable();
