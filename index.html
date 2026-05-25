@@ -746,38 +746,39 @@
     
     // ========== FIXED REFERRAL - INVITER GETS 500 PTS ==========
     async function handleReferral(refId) {
-        if (refId === userId) return;
-        try {
-            const inviterRef = window.fsDoc(window.firestore, 'users', refId);
-            const inviterSnap = await window.fsGetDoc(inviterRef);
+    if (refId === userId) return;
+    try {
+        // ဖိတ်ခေါ်သူ (inviter) ရဲ့ data ကိုယူ
+        const inviterRef = window.fsDoc(window.firestore, 'users', refId);
+        const inviterSnap = await window.fsGetDoc(inviterRef);
+        
+        if (inviterSnap.exists()) {
+            const inviterData = inviterSnap.data();
+            const alreadyReferred = inviterData.invitedFriends?.includes(userId);
             
-            if (inviterSnap.exists()) {
-                const inviterData = inviterSnap.data();
-                const alreadyReferred = inviterData.invitedFriends?.includes(userId);
+            if (!alreadyReferred) {
+                // ဖိတ်ခေါ်သူကို 500 PTS ပေး
+                const newInviterBalance = (inviterData.balance || 0) + REFERRAL_POINTS;
+                const newInviterTotal = (inviterData.totalEarned || 0) + REFERRAL_POINTS;
                 
-                if (!alreadyReferred) {
-                    // Give 500 PTS to the inviter
-                    const newInviterBalance = (inviterData.balance || 0) + REFERRAL_POINTS;
-                    const newInviterTotal = (inviterData.totalEarned || 0) + REFERRAL_POINTS;
-                    
-                    await window.fsUpdateDoc(inviterRef, {
-                        balance: newInviterBalance,
-                        totalEarned: newInviterTotal,
-                        invitedFriends: window.fsArrayUnion(userId)
-                    });
-                    
-                    // Update leaderboard for inviter
-                    const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
-                    await window.fsSetDoc(leaderboardRef, { 
-                        totalEarned: newInviterTotal, 
-                        name: inviterData.name 
-                    }, { merge: true });
-                    
-                    showNotification(`🎉 +${REFERRAL_POINTS} PTS given to ${inviterData.name} for inviting you!`);
-                }
-            }
-        } catch(e) { console.error("Referral error:", e); }
-    }
+                await window.fsUpdateDoc(inviterRef, {
+                    balance: newInviterBalance,
+                    totalEarned: newInviterTotal,
+                    invitedFriends: window.fsArrayUnion(userId)
+                });
+                
+                // Leaderboard update
+                const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
+                await window.fsSetDoc(leaderboardRef, { 
+                    totalEarned: newInviterTotal, 
+                    name: inviterData.name 
+                }, { merge: true });
+                
+                showNotification(`🎉 +${REFERRAL_POINTS} PTS given to ${inviterData.name} for inviting you!`);
+             }
+         }
+      } catch(e) { console.error("Referral error:", e); }
+  }
     
     async function addPointsOptimized(pts, source) {
         balance += pts;
