@@ -126,6 +126,62 @@
         }
         .copy-btn:active { transform: scale(0.95); }
         .copy-success { background: #10b981 !important; color: white !important; }
+        
+        /* Quiz choice buttons */
+        .quiz-choice {
+            background: #1e293b;
+            border: 1px solid #fbbf24;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .quiz-choice:hover {
+            background: #2d3a5e;
+            transform: scale(1.01);
+        }
+        .quiz-choice.selected {
+            background: #fbbf24;
+            color: #0a0e1a;
+            border-color: #f59e0b;
+        }
+        
+        /* Ad overlay */
+        .ad-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .ad-box {
+            background: linear-gradient(145deg, #1a1f33, #0f1424);
+            border: 2px solid #fbbf24;
+            border-radius: 24px;
+            padding: 25px;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(251,191,36,0.3);
+        }
+        .ad-close {
+            background: #fbbf24;
+            color: #0a0e1a;
+            border: none;
+            border-radius: 40px;
+            padding: 12px 24px;
+            font-weight: bold;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        .ad-close:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
@@ -217,8 +273,8 @@
             <div class="flex justify-center mb-3"><div class="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center"><i class="fas fa-brain text-3xl text-purple-400"></i></div></div>
             <h3 class="text-white font-bold text-xl mb-2">Daily Quiz Challenge</h3>
             <div id="quiz-q-display" class="bg-slate-800/80 p-6 rounded-2xl mb-4 text-lg font-medium text-white">Loading...</div>
-            <input type="text" id="quiz-ans-input" placeholder="အဖြေရိုက်ထည့်ပါ" class="text-center">
-            <button onclick="checkQuiz()" class="btn-yellow py-3 px-8 mt-3 rounded-xl text-lg font-bold">Submit</button>
+            <div id="quiz-choices-container" class="space-y-3"></div>
+            <button id="submit-quiz-btn" onclick="submitQuizAnswer()" class="btn-yellow py-3 px-8 mt-3 rounded-xl text-lg font-bold w-full">Submit Answer</button>
         </div>
         <div class="quiz-counter">
             <div class="flex justify-between items-center mb-3"><span class="text-sm text-amber-300"><i class="fas fa-chart-line mr-2"></i>စုစုပေါင်းဖြေဆိုပြီး</span><span class="counter-value" id="total-quiz-count">0</span></div>
@@ -349,8 +405,16 @@
                     <div class="mb-5"><h5 class="text-amber-300 text-sm font-bold mb-3">📝 Add Quiz</h5>
                         <div class="grid grid-cols-1 gap-2">
                             <input type="text" id="quiz-question" placeholder="Question" class="text-sm p-3">
-                            <input type="text" id="quiz-answer" placeholder="Answer" class="text-sm p-3">
+                            <input type="text" id="quiz-choice1" placeholder="Choice 1" class="text-sm p-3">
+                            <input type="text" id="quiz-choice2" placeholder="Choice 2" class="text-sm p-3">
+                            <input type="text" id="quiz-choice3" placeholder="Choice 3" class="text-sm p-3">
+                            <select id="quiz-correct" class="text-sm p-3">
+                                <option value="1">Choice 1 is correct</option>
+                                <option value="2">Choice 2 is correct</option>
+                                <option value="3">Choice 3 is correct</option>
+                            </select>
                             <input type="number" id="quiz-points" placeholder="Points" class="text-sm p-3" value="50">
+                            <input type="text" id="quiz-ad-code" placeholder="Ad Code (Optional)" class="text-sm p-3">
                             <button onclick="addQuizQuestion()" class="btn-yellow py-2 text-sm rounded-xl">Add Quiz</button>
                         </div>
                     </div>
@@ -382,11 +446,7 @@
     const MAX_GAMES_PER_DAY = 5;
     const BOT_USERNAME = "MMGOLDEN_bot";
     const ADMIN_PASSWORD = "871033";
-    const ADMIN_USER_IDS = ["6099430589"];
-    
-    // ✅ YOUR BOT TOKEN IS HERE - FIXED
-    const BOT_TOKEN = "8662694868:AAFtj7O1suiZ20b2PNOoRtldf57x0ogFNgk";
-    const ADMIN_CHAT_ID = "6099430589";
+    const ADMIN_USER_IDS = ["6099430589"];  // Only this user can access admin panel
     
     const QUIZ_MILESTONES = [
         { target: 50, reward: 50 },
@@ -422,6 +482,13 @@
     let tasksCache = [];
     let withdrawalsCache = [];
     let saveTimeout = null;
+    
+    // Quiz state
+    let currentQuiz = null;
+    let selectedChoice = null;
+    
+    // Ad waiting queue
+    let pendingAdCallback = null;
     
     document.getElementById('realtimeBadge').classList.remove('hidden');
     
@@ -551,14 +618,131 @@
         }, 2000);
     }
     
+    // ========== AD SYSTEM ==========
+    function showAd(callback) {
+        pendingAdCallback = callback;
+        const adDiv = document.createElement('div');
+        adDiv.className = 'ad-overlay';
+        adDiv.id = 'adOverlay';
+        
+        // Check if there's a custom ad code for current quiz
+        let adHtml = `<div class="ad-box"><i class="fas fa-video text-5xl text-amber-400 mb-3"></i><h3 class="text-xl font-bold mb-2">Watch Ad to Continue</h3><p class="text-sm text-slate-300 mb-4">Please watch this advertisement to claim your reward.</p><div class="w-full h-32 bg-slate-700 rounded-lg flex items-center justify-center mb-4"><i class="fas fa-play-circle text-4xl text-amber-400"></i><span class="ml-2">Advertisement Placeholder</span></div><button id="closeAdBtn" class="ad-close">✓ I watched the ad</button></div>`;
+        
+        // If there's a custom ad code from admin
+        if (currentQuiz && currentQuiz.adCode) {
+            adHtml = `<div class="ad-box"><div class="mb-4">${currentQuiz.adCode}</div><button id="closeAdBtn" class="ad-close">✓ I watched the ad</button></div>`;
+        }
+        
+        adDiv.innerHTML = adHtml;
+        document.body.appendChild(adDiv);
+        
+        document.getElementById('closeAdBtn').onclick = () => {
+            adDiv.remove();
+            if (pendingAdCallback) {
+                pendingAdCallback();
+                pendingAdCallback = null;
+            }
+        };
+    }
+    
+    // ========== QUIZ FUNCTIONS (Multiple Choice) ==========
+    function renderQuiz() {
+        const availableQuizzes = quizzesCache.filter(q => !completedQuizzes.includes(q.id));
+        if (availableQuizzes.length > 0) {
+            currentQuiz = availableQuizzes[0];
+            selectedChoice = null;
+            document.getElementById('quiz-q-display').innerHTML = `<i class="fas fa-question-circle mr-2 text-purple-400"></i>${currentQuiz.q}`;
+            
+            const choicesContainer = document.getElementById('quiz-choices-container');
+            const choices = [currentQuiz.c1, currentQuiz.c2, currentQuiz.c3];
+            choicesContainer.innerHTML = choices.map((choice, idx) => `
+                <div class="quiz-choice" data-choice="${idx+1}" onclick="selectQuizChoice(${idx+1})">
+                    <span class="choice-letter">${String.fromCharCode(65+idx)}.</span> ${choice}
+                </div>
+            `).join('');
+        } else {
+            currentQuiz = null;
+            document.getElementById('quiz-q-display').innerHTML = '🎉 ဂုဏ်ယူပါတယ်! မေးခွန်းအားလုံးဖြေပြီးပါပြီ။';
+            document.getElementById('quiz-choices-container').innerHTML = '';
+        }
+    }
+    
+    function selectQuizChoice(choiceNum) {
+        selectedChoice = choiceNum;
+        document.querySelectorAll('.quiz-choice').forEach(el => {
+            el.classList.remove('selected');
+            if (el.dataset.choice == choiceNum) el.classList.add('selected');
+        });
+    }
+    
+    function submitQuizAnswer() {
+        if (!currentQuiz) {
+            alert("No quiz available!");
+            return;
+        }
+        if (!selectedChoice) {
+            alert("Please select an answer!");
+            return;
+        }
+        
+        const isCorrect = (selectedChoice == currentQuiz.correct);
+        
+        if (isCorrect) {
+            // Show ad before giving points
+            showAd(async () => {
+                await addPointsOptimized(currentQuiz.p, "Quiz");
+                completedQuizzes.push(currentQuiz.id);
+                totalQuizzesAnswered++;
+                await saveToFirebase();
+                renderQuiz();
+                updateQuizCounterUI();
+                showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
+                selectedChoice = null;
+            });
+        } else {
+            // Wrong answer - show ad as penalty
+            showAd(() => {
+                showNotification("❌ Wrong answer! Better luck next time!");
+                renderQuiz();
+                selectedChoice = null;
+            });
+        }
+    }
+    
+    function updateQuizCounterUI() {
+        document.getElementById('total-quiz-count').innerText = totalQuizzesAnswered;
+        QUIZ_MILESTONES.forEach(m => {
+            const el = document.getElementById(`milestone-${m.target}`);
+            if (el) {
+                const isCompleted = claimedMilestones.includes(m.target);
+                const isReached = totalQuizzesAnswered >= m.target;
+                if (isCompleted) { el.className = 'milestone-item milestone-completed'; el.innerHTML = `${m.target} → ${m.reward} PTS ✓`; el.onclick = null; }
+                else if (isReached) { el.className = 'milestone-item milestone-ready'; el.innerHTML = `${m.target} → ${m.reward} PTS 🎁`; el.onclick = () => claimMilestoneReward(m.target, m.reward); }
+                else { el.className = 'milestone-item milestone-pending'; el.innerHTML = `${m.target} → ${m.reward} PTS`; el.onclick = null; }
+            }
+        });
+    }
+    
+    async function claimMilestoneReward(target, reward) {
+        if (claimedMilestones.includes(target)) { showNotification("Already claimed!"); return; }
+        if (totalQuizzesAnswered < target) { showNotification(`Need ${target} answers!`); return; }
+        await addPointsOptimized(reward, `Milestone ${target}`);
+        claimedMilestones.push(target);
+        await saveToFirebase();
+        updateQuizCounterUI();
+        showNotification(`🎉 +${reward} PTS!`);
+    }
+    
     function setupQuizzesListener() {
         if (!window.firestore) return;
         const quizzesCollection = window.fsCollection(window.firestore, 'quizzes');
         unsubscribeQuizzes = window.fsOnSnapshot(quizzesCollection, (snapshot) => {
             quizzesCache = [];
-            snapshot.forEach(doc => { quizzesCache.push({ id: doc.id, ...doc.data() }); });
+            snapshot.forEach(doc => { 
+                quizzesCache.push({ id: doc.id, ...doc.data() }); 
+            });
             if (quizzesCache.length === 0) {
-                const defaultQuiz = { q: "မြန်မာနိုင်ငံ၏ မြို့တော်မှာ?", a: "နေပြည်တော်", p: 50 };
+                const defaultQuiz = { q: "မြန်မာနိုင်ငံ၏ မြို့တော်မှာ?", c1: "ရန်ကုန်", c2: "မန္တလေး", c3: "နေပြည်တော်", correct: 3, p: 50 };
                 window.fsSetDoc(window.fsDoc(window.firestore, 'quizzes', 'default1'), defaultQuiz);
             }
             renderQuiz();
@@ -628,34 +812,6 @@
             }
             renderUserWithdrawalHistory();
         });
-    }
-    
-    // ✅ Send notification to admin bot
-    async function sendToAdminBot(message) {
-        if (!BOT_TOKEN || BOT_TOKEN === "YOUR_BOT_TOKEN_HERE") {
-            console.log("⚠️ Bot token not configured!");
-            return;
-        }
-        try {
-            console.log("📤 Sending to bot...");
-            const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    chat_id: ADMIN_CHAT_ID, 
-                    text: message,
-                    parse_mode: 'HTML'
-                })
-            });
-            const result = await response.json();
-            if (result.ok) {
-                console.log("✅ Notification sent to admin bot!");
-            } else {
-                console.error("❌ Bot error:", result.description);
-            }
-        } catch(e) { 
-            console.error("❌ Bot send error:", e); 
-        }
     }
     
     async function initTelegramUser() {
@@ -745,30 +901,6 @@
         } 
     }
     
-    function updateQuizCounterUI() {
-        document.getElementById('total-quiz-count').innerText = totalQuizzesAnswered;
-        QUIZ_MILESTONES.forEach(m => {
-            const el = document.getElementById(`milestone-${m.target}`);
-            if (el) {
-                const isCompleted = claimedMilestones.includes(m.target);
-                const isReached = totalQuizzesAnswered >= m.target;
-                if (isCompleted) { el.className = 'milestone-item milestone-completed'; el.innerHTML = `${m.target} → ${m.reward} PTS ✓`; el.onclick = null; }
-                else if (isReached) { el.className = 'milestone-item milestone-ready'; el.innerHTML = `${m.target} → ${m.reward} PTS 🎁`; el.onclick = () => claimMilestoneReward(m.target, m.reward); }
-                else { el.className = 'milestone-item milestone-pending'; el.innerHTML = `${m.target} → ${m.reward} PTS`; el.onclick = null; }
-            }
-        });
-    }
-    
-    async function claimMilestoneReward(target, reward) {
-        if (claimedMilestones.includes(target)) { showNotification("Already claimed!"); return; }
-        if (totalQuizzesAnswered < target) { showNotification(`Need ${target} answers!`); return; }
-        await addPointsOptimized(reward, `Milestone ${target}`);
-        claimedMilestones.push(target);
-        await saveToFirebase();
-        updateQuizCounterUI();
-        showNotification(`🎉 +${reward} PTS!`);
-    }
-    
     function updateGameRemainingUI() {
         const remaining = Math.max(0, MAX_GAMES_PER_DAY - gamesPlayedToday);
         document.getElementById('game-remaining').innerHTML = `🎮 ယနေ့ကျန်ပွဲရေ: ${remaining}`;
@@ -856,13 +988,19 @@
         const today = new Date().toDateString();
         const lastBonus = localStorage.getItem(`daily_bonus_${userId}`);
         if (lastBonus === today) { alert("နောက်တစ်နေ့မှ ထပ်မံရယူနိုင်ပါသည်။"); return; }
+        
+        // Show ad before claiming daily bonus
+        showAd(async () => {
+            await addPointsOptimized(100, "Daily Bonus");
+            localStorage.setItem(`daily_bonus_${userId}`, today);
+            const btn = document.getElementById('daily-bonus-btn');
+            btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Claimed! +100 PTS';
+            document.getElementById('bonus-status').innerHTML = '<i class="fas fa-check-circle text-green-400"></i> Today\'s bonus claimed!';
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-gift mr-2"></i>Claim Daily Bonus (+100 PTS)'; btn.disabled = false; }, 3000);
+        });
+        
         const btn = document.getElementById('daily-bonus-btn');
         btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        await addPointsOptimized(100, "Daily Bonus");
-        localStorage.setItem(`daily_bonus_${userId}`, today);
-        btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Claimed! +100 PTS';
-        document.getElementById('bonus-status').innerHTML = '<i class="fas fa-check-circle text-green-400"></i> Today\'s bonus claimed!';
-        setTimeout(() => { btn.innerHTML = '<i class="fas fa-gift mr-2"></i>Claim Daily Bonus (+100 PTS)'; btn.disabled = false; }, 3000);
     }
     
     // ========== GAME ==========
@@ -989,13 +1127,18 @@
     async function gameOver(){ 
         gameRunning=false; 
         if(gameAnimationId) cancelAnimationFrame(gameAnimationId); 
-        const earned = gameCoins >= 10 ? gameCoins * COIN_TO_POINTS : 0;
-        if(earned>0) { 
-            gamesPlayedToday++; 
-            await saveToFirebase(); 
-            updateGameRemainingUI(); 
-            await addPointsOptimized(earned,"Coin Runner"); 
+        const earned = gameCoins * COIN_TO_POINTS;
+        
+        if(earned > 0) { 
+            // Show ad after game before giving points
+            showAd(async () => {
+                gamesPlayedToday++; 
+                await saveToFirebase(); 
+                updateGameRemainingUI(); 
+                await addPointsOptimized(earned, "Coin Runner");
+            });
         }
+        
         if(gameCoins>gameBest){ 
             gameBest=gameCoins; 
             localStorage.setItem('game_best',gameBest); 
@@ -1004,7 +1147,7 @@
         const overlayStars = '⭐'.repeat(Math.min(5, Math.floor(gameCoins/20)));
         const overlay=document.createElement('div'); 
         overlay.className='game-overlay'; 
-        overlay.innerHTML=`<div class="bg-slate-900 p-6 rounded-2xl text-center border border-amber-500 max-w-[300px]"><i class="fas fa-trophy text-5xl text-amber-400 mb-3"></i><p class="text-xl font-bold text-white">${gameCoins>=10?'Great!':'Game Over!'}</p><p class="text-amber-400 mt-2">Coins: ${gameCoins}</p><p class="text-green-400">Earned: +${earned} PTS</p><p class="text-red-400 text-sm mt-1">${gameCoins<10?'❌ You collected less than 10 coins! No points awarded!':'✅ You got 10+ coins!'}</p><p class="text-yellow-400 text-sm mt-1">${overlayStars}</p><button onclick="this.parentElement.parentElement.remove(); startGame()" class="btn-yellow px-6 py-2 mt-4 rounded-xl"><i class="fas fa-redo-alt mr-2"></i>Play Again</button><button onclick="this.parentElement.parentElement.remove()" class="bg-slate-700 px-6 py-2 mt-2 rounded-xl ml-2">Close</button></div>`; 
+        overlay.innerHTML=`<div class="bg-slate-900 p-6 rounded-2xl text-center border border-amber-500 max-w-[300px]"><i class="fas fa-trophy text-5xl text-amber-400 mb-3"></i><p class="text-xl font-bold text-white">${gameCoins>=10?'Great!':'Game Over!'}</p><p class="text-amber-400 mt-2">Coins: ${gameCoins}</p><p class="text-green-400">Earned: +${earned} PTS</p><p class="text-yellow-400 text-sm mt-1">${overlayStars}</p><button onclick="this.parentElement.parentElement.remove(); startGame()" class="btn-yellow px-6 py-2 mt-4 rounded-xl"><i class="fas fa-redo-alt mr-2"></i>Play Again</button><button onclick="this.parentElement.parentElement.remove()" class="bg-slate-700 px-6 py-2 mt-2 rounded-xl ml-2">Close</button></div>`; 
         document.body.appendChild(overlay); 
     }
     
@@ -1038,35 +1181,6 @@
         showNotification(`✅ +${reward} PTS!`);
     }
     
-    function renderQuiz(){ 
-        const availableQuizzes = quizzesCache.filter(q => !completedQuizzes.includes(q.id));
-        if (availableQuizzes.length > 0) {
-            document.getElementById('quiz-q-display').innerHTML = `<i class="fas fa-question-circle mr-2 text-purple-400"></i>${availableQuizzes[0].q}`;
-        } else {
-            document.getElementById('quiz-q-display').innerHTML = '🎉 ဂုဏ်ယူပါတယ်! မေးခွန်းအားလုံးဖြေပြီးပါပြီ။';
-        }
-    }
-    
-    async function checkQuiz(){ 
-        const ans = document.getElementById('quiz-ans-input').value.trim(); 
-        const availableQuizzes = quizzesCache.filter(q => !completedQuizzes.includes(q.id));
-        const q = availableQuizzes[0];
-        if(q && ans === q.a){ 
-            await addPointsOptimized(q.p, "Quiz"); 
-            completedQuizzes.push(q.id); 
-            totalQuizzesAnswered++; 
-            await saveToFirebase(); 
-            document.getElementById('quiz-ans-input').value = ""; 
-            renderQuiz(); 
-            updateQuizCounterUI();
-            showNotification(`✅ Correct! +${q.p} PTS (Total: ${totalQuizzesAnswered})`); 
-        } else if(q) { 
-            alert("အဖြေမှားပါသည်။"); 
-        } else { 
-            alert("မေးခွန်းအားလုံးဖြေပြီးပါပြီ။"); 
-        } 
-    }
-  
     function renderRefUI() { 
         if(!userId) return;
         const inviteLink = `https://t.me/${BOT_USERNAME}?start=${userId}`;
@@ -1120,14 +1234,10 @@
             timestamp: new Date().toISOString()
         });
         
-        // ✅ Send notification to admin bot
-        const message = `🆕 NEW WITHDRAWAL REQUEST!\n\n👤 User: ${userName}\n🆔 ID: ${userId}\n💰 Amount: ${amount.toLocaleString()} PTS ($${usdAmount})\n📱 Method: ${selectedMethod === 'kapy' ? 'Kpay' : 'Wave'}\n👤 Name: ${name}\n📞 Phone: ${phone}`;
-        await sendToAdminBot(message);
-        
         balance -= amount; 
         await saveToFirebase(); 
         updateBalanceUI(); 
-        alert("✅ Withdrawal request submitted! Admin will review it.");
+        alert("✅ Withdrawal request submitted!");
         document.getElementById('w-name').value = '';
         document.getElementById('w-phone').value = '';
         document.getElementById('w-amt').value = '';
@@ -1144,7 +1254,7 @@
             const usersSnapshot = await window.fsGetDocs(usersCollection);
             const users = [];
             usersSnapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-            if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></td>'; return; }
+            if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
             tbody.innerHTML = users.slice(0, 50).map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
         } catch(e) { console.error(e); }
     }
@@ -1293,11 +1403,23 @@
     
     async function addQuizQuestion(){ 
         if (!isAdmin) { showNotification("Not authorized!"); return; }
-        const q = document.getElementById('quiz-question').value.trim(), a = document.getElementById('quiz-answer').value.trim(), p = parseInt(document.getElementById('quiz-points').value); 
-        if(!q || !a || isNaN(p)){ alert("Fill all fields"); return; } 
+        const q = document.getElementById('quiz-question').value.trim();
+        const c1 = document.getElementById('quiz-choice1').value.trim();
+        const c2 = document.getElementById('quiz-choice2').value.trim();
+        const c3 = document.getElementById('quiz-choice3').value.trim();
+        const correct = parseInt(document.getElementById('quiz-correct').value);
+        const p = parseInt(document.getElementById('quiz-points').value);
+        const adCode = document.getElementById('quiz-ad-code').value.trim();
+        
+        if(!q || !c1 || !c2 || !c3 || isNaN(correct) || isNaN(p)){ alert("Fill all fields"); return; } 
         const newId = Date.now().toString(); 
-        await window.fsSetDoc(window.fsDoc(window.firestore, 'quizzes', newId), { q, a, p });
-        document.getElementById('quiz-question').value = ''; document.getElementById('quiz-answer').value = ''; 
+        await window.fsSetDoc(window.fsDoc(window.firestore, 'quizzes', newId), { q, c1, c2, c3, correct, p, adCode });
+        document.getElementById('quiz-question').value = ''; 
+        document.getElementById('quiz-choice1').value = '';
+        document.getElementById('quiz-choice2').value = '';
+        document.getElementById('quiz-choice3').value = '';
+        document.getElementById('quiz-points').value = '50';
+        document.getElementById('quiz-ad-code').value = '';
         showNotification("Quiz added!"); 
     }
     
@@ -1306,12 +1428,12 @@
         const c = document.getElementById('quiz-list'); 
         if(!c) return; 
         if(quizzesCache.length === 0){ c.innerHTML = '<div class="text-center text-slate-500 py-2">No quizzes</div>'; return; } 
-        c.innerHTML = quizzesCache.map(q => `<div class="quiz-item flex justify-between items-center"><div><p class="text-xs text-white">${q.q}</p><p class="text-[9px] text-amber-400">+${q.p} PTS</p></div><button onclick="deleteQuizQuestion('${q.id}')" class="bg-red-600/50 px-2 py-1 rounded text-[10px]">Delete</button></div>`).join(''); 
+        c.innerHTML = quizzesCache.map(q => `<div class="quiz-item flex justify-between items-center"><div><p class="text-xs text-white">${q.q.substring(0,30)}...</p><p class="text-[9px] text-amber-400">+${q.p} PTS</p></div><button onclick="deleteQuizQuestion('${q.id}')" class="bg-red-600/50 px-2 py-1 rounded text-[10px]">Delete</button></div>`).join(''); 
     }
     
     async function deleteQuizQuestion(id){ 
         if (!isAdmin) { showNotification("Not authorized!"); return; }
-        if(confirm("Delete quiz?")){ 
+        if(confirm("Delete this quiz?")){ 
             await window.fsDeleteDoc(window.fsDoc(window.firestore, 'quizzes', id)); 
             showNotification("Quiz deleted"); 
         } 
@@ -1319,6 +1441,10 @@
     
     let secretCount = 0;
     function handleSecret(){ 
+        if (!isAdmin) {
+            alert("❌ You are not authorized to access admin panel!");
+            return;
+        }
         secretCount++; 
         setTimeout(() => secretCount = 0, 2000); 
         if(secretCount === 3){ 
@@ -1333,8 +1459,6 @@
                     renderAdminUserTable();
                     renderAdminWithdrawals();
                 }
-            } else if(pwd === ADMIN_PASSWORD && !isAdmin) {
-                alert("❌ Not registered as admin!");
             } else if(pwd !== ADMIN_PASSWORD) {
                 alert("Wrong password!");
             }
