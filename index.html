@@ -185,6 +185,10 @@
             cursor: pointer;
         }
         .ad-close:active { transform: scale(0.97); }
+        
+        /* Nav button styles */
+        .nav-btn { transition: all 0.2s; }
+        .nav-btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -262,7 +266,7 @@
             <div class="flex justify-between text-[10px] text-slate-500 mt-2"><span>လက်ရှိ:</span><span id="withdraw-progress-current" class="text-amber-300 font-bold">0</span><span>PTS</span></div>
         </div>
         <div class="gold-card p-6">
-            <div class="flex items-center gap-3 mb-5"><i class="fas fa-trophy text-2xl text-amber-400"></i><h3 class="text-amber-400 font-bold text-lg">🏆 Top 5 Users</h3></div>
+            <div class="flex items-center gap-3 mb-5"><i class="fas fa-trophy text-2xl text-amber-400"></i><h3 class="text-amber-400 font-bold text-lg">🏆 Top 5 Users (Current Balance)</h3></div>
             <div id="top-users-list" class="space-y-3"><div class="text-center py-4 text-slate-500">Loading...</div></div>
         </div>
         <button id="withdraw-home-btn" onclick="checkWithdrawEligibility()" class="w-full withdraw-btn py-5 text-lg font-bold rounded-xl">
@@ -433,11 +437,11 @@
 </main>
 
 <nav class="fixed bottom-0 w-full bg-[#0a0e1a]/95 backdrop-blur-sm border-t border-white/10 flex justify-around py-3 z-50">
-    <button onclick="showSec('sec-home')" class="nav-btn flex flex-col items-center text-amber-500 nav-active py-1"><i class="fas fa-home text-xl"></i><span class="text-[9px] mt-0.5">Home</span></button>
-    <button onclick="showSec('sec-quiz')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-brain text-xl"></i><span class="text-[9px] mt-0.5">Quiz</span></button>
-    <button onclick="showSec('sec-invite')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-user-plus text-xl"></i><span class="text-[9px] mt-0.5">Invite</span></button>
-    <button onclick="showSec('sec-tasks')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-tasks text-xl"></i><span class="text-[9px] mt-0.5">Tasks</span></button>
-    <button onclick="showSec('sec-about')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-cog text-xl"></i><span class="text-[9px] mt-0.5">Setting</span></button>
+    <button onclick="showSecWithAd('sec-home')" class="nav-btn flex flex-col items-center text-amber-500 nav-active py-1"><i class="fas fa-home text-xl"></i><span class="text-[9px] mt-0.5">Home</span></button>
+    <button onclick="showSecWithAd('sec-quiz')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-brain text-xl"></i><span class="text-[9px] mt-0.5">Quiz</span></button>
+    <button onclick="showSecWithAd('sec-invite')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-user-plus text-xl"></i><span class="text-[9px] mt-0.5">Invite</span></button>
+    <button onclick="showSecWithAd('sec-tasks')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-tasks text-xl"></i><span class="text-[9px] mt-0.5">Tasks</span></button>
+    <button onclick="showSecWithAd('sec-about')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-cog text-xl"></i><span class="text-[9px] mt-0.5">Setting</span></button>
 </nav>
 
 <script>
@@ -455,6 +459,13 @@
     const ONCLICKA_SPOT_ID = "6120803";
     let onClickaAdLoaded = false;
     let onClickaShowAd = null;
+    
+    // Quiz counter for ad trigger (show ad every 2 quizzes)
+    let quizAttemptCount = 0;
+    const QUIZ_ATTEMPTS_BEFORE_AD = 2;
+    
+    // Game counter for ad trigger (show ad every game)
+    let gamePlayCount = 0;
     
     const QUIZ_MILESTONES = [
         { target: 50, reward: 50 },
@@ -535,21 +546,6 @@
         }
     }
     
-    // Show OnClicka Rewarded Ad
-    function showOnClickaAd(callback) {
-        if (onClickaShowAd) {
-            onClickaShowAd().then(() => {
-                if (callback) callback();
-            }).catch((e) => {
-                console.error("Ad show error:", e);
-                if (callback) callback();
-            });
-        } else {
-            // Fallback: show ad container with timer
-            showAdFallback(callback);
-        }
-    }
-    
     function showAdFallback(callback) {
         pendingAdCallback = callback;
         const adDiv = document.createElement('div');
@@ -617,7 +613,7 @@
                 const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', userId);
                 await window.fsSetDoc(leaderboardRef, {
                     name: userName || 'User',
-                    totalEarned: currentUser?.totalEarned || 0
+                    balance: balance
                 }, { merge: true });
             } catch(e) { console.error("Save error:", e); }
         }, 1000);
@@ -701,7 +697,6 @@
     // ========== AD SYSTEM ==========
     function showAd(callback) {
         pendingAdCallback = callback;
-        // Use OnClicka ad if available
         if (onClickaShowAd) {
             onClickaShowAd().then(() => {
                 if (pendingAdCallback) {
@@ -717,47 +712,12 @@
         }
     }
     
-    function showAdFallback(callback) {
-        pendingAdCallback = callback;
-        const adDiv = document.createElement('div');
-        adDiv.className = 'ad-overlay';
-        adDiv.innerHTML = `
-            <div class="ad-box">
-                <i class="fas fa-video text-5xl text-amber-400 mb-3"></i>
-                <h3 class="text-xl font-bold mb-2">Watch Ad to Continue</h3>
-                <p class="text-sm text-slate-300 mb-4">Please wait a moment...</p>
-                <div class="w-full h-32 bg-slate-700 rounded-lg flex items-center justify-center mb-4">
-                    <i class="fas fa-play-circle text-4xl text-amber-400"></i>
-                    <span class="ml-2">Loading advertisement...</span>
-                </div>
-                <button id="closeAdBtn" class="ad-close" disabled style="opacity:0.5;">⏳ Please wait 5s...</button>
-            </div>
-        `;
-        document.body.appendChild(adDiv);
-        
-        let timer = 5;
-        const closeBtn = document.getElementById('closeAdBtn');
-        const interval = setInterval(() => {
-            timer--;
-            if (timer <= 0) {
-                clearInterval(interval);
-                closeBtn.disabled = false;
-                closeBtn.style.opacity = '1';
-                closeBtn.style.cursor = 'pointer';
-                closeBtn.innerHTML = '✓ Continue';
-            } else {
-                closeBtn.innerHTML = `⏳ Please wait ${timer}s...`;
-            }
-        }, 1000);
-        
-        closeBtn.onclick = () => {
-            if (closeBtn.disabled) return;
-            adDiv.remove();
-            if (pendingAdCallback) {
-                pendingAdCallback();
-                pendingAdCallback = null;
-            }
-        };
+    // ========== SHOW SECTION WITH AD ==========
+    function showSecWithAd(id) {
+        // Show ad before changing section
+        showAd(() => {
+            showSec(id);
+        });
     }
     
     // ========== QUIZ FUNCTIONS ==========
@@ -801,19 +761,37 @@
         }
         
         const isCorrect = (selectedChoice == currentQuiz.correct);
+        quizAttemptCount++;
         
         if (isCorrect) {
-            showAd(async () => {
-                await addPointsOptimized(currentQuiz.p, "Quiz");
-                completedQuizzes.push(currentQuiz.id);
-                totalQuizzesAnswered++;
-                await saveToFirebase();
-                renderQuiz();
-                updateQuizCounterUI();
-                showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
-                selectedChoice = null;
-            });
+            // Check if we need to show ad (every 2 quizzes)
+            if (quizAttemptCount >= QUIZ_ATTEMPTS_BEFORE_AD) {
+                quizAttemptCount = 0;
+                showAd(async () => {
+                    await addPointsOptimized(currentQuiz.p, "Quiz");
+                    completedQuizzes.push(currentQuiz.id);
+                    totalQuizzesAnswered++;
+                    await saveToFirebase();
+                    renderQuiz();
+                    updateQuizCounterUI();
+                    showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
+                    selectedChoice = null;
+                });
+            } else {
+                // No ad needed
+                (async () => {
+                    await addPointsOptimized(currentQuiz.p, "Quiz");
+                    completedQuizzes.push(currentQuiz.id);
+                    totalQuizzesAnswered++;
+                    await saveToFirebase();
+                    renderQuiz();
+                    updateQuizCounterUI();
+                    showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
+                    selectedChoice = null;
+                })();
+            }
         } else {
+            // Wrong answer - always show ad as penalty
             showAd(() => {
                 showNotification("❌ Wrong answer! Better luck next time!");
                 renderQuiz();
@@ -875,13 +853,16 @@
         });
     }
     
+    // ========== TOP 5 - SORT BY CURRENT BALANCE ==========
     function setupLeaderboardListener() {
         if (!window.firestore) return;
         const leaderboardCollection = window.fsCollection(window.firestore, 'leaderboard');
-        const leaderboardQuery = window.fsQuery(leaderboardCollection, window.fsOrderBy('totalEarned', 'desc'), window.fsLimit(50));
+        const leaderboardQuery = window.fsQuery(leaderboardCollection, window.fsOrderBy('balance', 'desc'), window.fsLimit(50));
         unsubscribeLeaderboard = window.fsOnSnapshot(leaderboardQuery, (snapshot) => {
             const leaders = [];
-            snapshot.forEach(doc => { leaders.push({ name: doc.data().name, totalEarned: doc.data().totalEarned }); });
+            snapshot.forEach(doc => { 
+                leaders.push({ name: doc.data().name, balance: doc.data().balance || 0 }); 
+            });
             renderTopUsers(leaders.slice(0, 5));
         });
     }
@@ -969,7 +950,6 @@
             const today = new Date().toDateString();
             if (lastGameDate !== today) { gamesPlayedToday = 0; lastGameDate = today; await saveToFirebase(); }
             
-            // Initialize OnClicka Ad
             await initOnClickaAd();
             
             setupQuizzesListener();
@@ -998,7 +978,7 @@
         const container = document.getElementById('top-users-list');
         if (!container) return;
         if (!users || users.length === 0) { container.innerHTML = '<div class="text-center text-slate-500 py-4">No users yet</div>'; return; }
-        container.innerHTML = users.map((u, i) => `<div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-xl"><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-amber-500/30 flex items-center justify-center"><span class="text-xs font-bold text-amber-400">${i+1}</span></div><span class="text-white">${u.name}</span></div><span class="text-amber-400 font-bold">${(u.totalEarned || 0).toLocaleString()}</span></div>`).join('');
+        container.innerHTML = users.map((u, i) => `<div class="flex justify-between items-center p-3 bg-slate-800/50 rounded-xl"><div class="flex gap-3"><div class="w-6 h-6 rounded-full bg-amber-500/30 flex items-center justify-center"><span class="text-xs font-bold text-amber-400">${i+1}</span></div><span class="text-white">${u.name}</span></div><span class="text-amber-400 font-bold">${(u.balance || 0).toLocaleString()}</span></div>`).join('');
     }
     
     function toggleAdminMode() { 
@@ -1048,7 +1028,7 @@
             
             const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
             await window.fsSetDoc(leaderboardRef, { 
-                totalEarned: newInviterTotal, 
+                balance: newInviterBalance,
                 name: inviterData.name 
             }, { merge: true });
             
@@ -1059,7 +1039,10 @@
     
     async function addPointsOptimized(pts, source) {
         balance += pts;
-        if (currentUser) { currentUser.balance = balance; currentUser.totalEarned = (currentUser.totalEarned || 0) + pts; }
+        if (currentUser) { 
+            currentUser.balance = balance; 
+            currentUser.totalEarned = (currentUser.totalEarned || 0) + pts; 
+        }
         await saveToFirebase();
         updateBalanceUI();
         showNotification(`+${pts} PTS from ${source}`);
@@ -1244,6 +1227,7 @@
         const earned = gameCoins * COIN_TO_POINTS;
         
         if(earned > 0) { 
+            // Show ad after every game
             showAd(async () => {
                 gamesPlayedToday++; 
                 await saveToFirebase(); 
@@ -1367,7 +1351,7 @@
             const usersSnapshot = await window.fsGetDocs(usersCollection);
             const users = [];
             usersSnapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-            if(users.length === 0){ tbody.innerHTML='</table><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
+            if(users.length === 0){ tbody.innerHTML='<td><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
             tbody.innerHTML = users.slice(0, 50).map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
         } catch(e) { console.error(e); }
     }
@@ -1381,11 +1365,10 @@
             if(userSnap.exists()){ 
                 const userData = userSnap.data(); 
                 const newBalance = (userData.balance || 0) + amount; 
-                const newTotal = (userData.totalEarned || 0) + amount; 
-                await window.fsUpdateDoc(userRef, { balance: newBalance, totalEarned: newTotal });
+                await window.fsUpdateDoc(userRef, { balance: newBalance });
                 if(uid === userId){ balance = newBalance; updateBalanceUI(); } 
                 const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', uid);
-                await window.fsSetDoc(leaderboardRef, { totalEarned: newTotal, name: userData.name }, { merge: true });
+                await window.fsSetDoc(leaderboardRef, { balance: newBalance, name: userData.name }, { merge: true });
                 showNotification(`Added ${amount} points to user!`); 
                 renderAdminUserTable(); 
             } 
@@ -1420,10 +1403,10 @@
                 }
             }
             if(!foundUser){ alert("User not found"); return; }
-            let newBalance = foundUser.balance || 0, newTotal = foundUser.totalEarned || 0;
-            if(action === 'add'){ newBalance += points; newTotal += points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance, totalEarned: newTotal }); showNotification(`Added ${points} points to ${foundUser.name}`); }
+            let newBalance = foundUser.balance || 0;
+            if(action === 'add'){ newBalance += points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance }); showNotification(`Added ${points} points to ${foundUser.name}`); }
             else { if(points > newBalance){ alert("Not enough points!"); return; } newBalance -= points; await window.fsUpdateDoc(window.fsDoc(window.firestore, 'users', foundUid), { balance: newBalance }); showNotification(`Removed ${points} points from ${foundUser.name}`); }
-            await window.fsSetDoc(window.fsDoc(window.firestore, 'leaderboard', foundUid), { totalEarned: newTotal, name: foundUser.name }, { merge: true });
+            await window.fsSetDoc(window.fsDoc(window.firestore, 'leaderboard', foundUid), { balance: newBalance, name: foundUser.name }, { merge: true });
             if(foundUid === userId){ balance = newBalance; updateBalanceUI(); }
             renderAdminUserTable();
         } catch(e) { console.error(e); }
