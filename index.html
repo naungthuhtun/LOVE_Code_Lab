@@ -5,60 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>MM GOLDEN - Telegram Mini App</title>
     
-    <!-- RichInfo Telegram Ad Network -->
-    <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
-    <script>
-        // Initialize RichInfo Ads
-        window.TelegramAdsController = new TelegramAdsController();
-        window.TelegramAdsController.initialize({
-            pubId: "1014061",
-            appId: "7735",
-        });
-        
-        // Ad Unit IDs for different features
-        const AD_UNITS = {
-            DAILY_BONUS: "399125",
-            QUIZ: "399123", 
-            GAME: "399124",
-            TASK: "399126"
-        };
-        
-        let isAdReady = true;
-        
-        // Function to show rewarded ad
-        function showRewardedAd(adUnitId, callback, retryCount = 0) {
-            try {
-                if (window.TelegramAdsController) {
-                    console.log("Showing ad for unit:", adUnitId);
-                    window.TelegramAdsController.showRewardedAd({
-                        adUnitId: adUnitId,
-                        onReward: () => {
-                            console.log("✅ Ad reward granted!");
-                            if (callback) callback(true);
-                        },
-                        onError: (error) => {
-                            console.log("Ad error:", error);
-                            if (retryCount < 2) {
-                                console.log("Retrying ad...");
-                                setTimeout(() => showRewardedAd(adUnitId, callback, retryCount + 1), 1000);
-                            } else {
-                                if (callback) callback(true);
-                            }
-                        }
-                    });
-                } else {
-                    console.log("Ad controller not ready, auto-reward");
-                    if (callback) callback(true);
-                }
-            } catch(e) {
-                console.log("Ad error:", e);
-                if (callback) callback(true);
-            }
-        }
-        
-        console.log("✅ RichInfo Ads initialized");
-    </script>
-    
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
@@ -101,6 +47,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
+        /* All existing styles remain the same */
         @import url('https://fonts.googleapis.com/css2?family=Pyidaungsu:wght@400;500;600;700&display=swap');
         * { user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Pyidaungsu', sans-serif; background: #0a0e1a; color: white; overflow-x: hidden; min-height: 100vh; }
@@ -173,7 +120,6 @@
 <div class="loading-overlay" id="loadingOverlay">
     <i class="fas fa-spinner fa-spin text-4xl text-amber-400 mb-4"></i>
     <p class="text-white">Loading MM GOLDEN...</p>
-    <p class="text-slate-500 text-xs mt-2" id="loading-status">Initializing...</p>
 </div>
 
 <div class="error-message hidden" id="errorMessage">
@@ -219,7 +165,6 @@
 <main class="max-w-md mx-auto pt-28 px-4" style="display: none;" id="mainContent">
     <!-- Home Section -->
     <div id="sec-home" class="section active space-y-5">
-        <!-- Ad Banner -->
         <div class="ad-container">
             <div class="ad-label">✨ SPONSORED ✨</div>
             <div id="home-ad-banner" class="text-center text-xs text-amber-400">Watch ads to earn more points!</div>
@@ -280,7 +225,6 @@
         <div class="gold-card p-6 text-center">
             <div class="flex justify-center mb-3"><div class="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center"><i class="fas fa-brain text-3xl text-purple-400"></i></div></div>
             <h3 class="text-white font-bold text-xl mb-2">Daily Quiz Challenge</h3>
-            <!-- Quiz Ad Banner -->
             <div class="ad-container mb-3">
                 <div class="ad-label">📺 WATCH AD FOR BONUS 📺</div>
             </div>
@@ -306,7 +250,6 @@
                 <div class="bg-black/50 px-5 py-2 rounded-xl flex-1 text-center"><span class="text-[10px] text-slate-500">Best</span><p id="game-best" class="text-2xl font-bold text-green-400">0</p></div>
                 <button id="game-play-btn" onclick="startGame()" class="btn-yellow px-5 py-2 text-sm font-bold rounded-xl"><i class="fas fa-play mr-1"></i> Play</button>
             </div>
-            <!-- Game Ad Banner -->
             <div class="ad-container mt-3">
                 <div class="ad-label">🎮 WATCH AD FOR EXTRA LIFE 🎮</div>
             </div>
@@ -347,7 +290,6 @@
 
     <!-- Tasks Section -->
     <div id="sec-tasks" class="section space-y-5">
-        <!-- Tasks Ad Banner -->
         <div class="ad-container">
             <div class="ad-label">💪 COMPLETE TASKS & WATCH ADS 💪</div>
         </div>
@@ -462,6 +404,46 @@
 </nav>
 
 <script>
+    // ========== ADSTERRA SMARTLINK ==========
+    const ADSTERRA_LINK = "https://www.effectivecpmnetwork.com/jy1nnez9i?key=7ef36a05482f0d144335daeabb0cb584";
+    
+    // Ad cooldown system - 10 seconds between ads
+    let lastAdTime = 0;
+    const AD_COOLDOWN = 10000; // 10 seconds
+    
+    function canShowAd() {
+        const now = Date.now();
+        const timeSinceLastAd = now - lastAdTime;
+        return timeSinceLastAd >= AD_COOLDOWN;
+    }
+    
+    function getAdCooldownRemaining() {
+        const now = Date.now();
+        const remaining = AD_COOLDOWN - (now - lastAdTime);
+        return remaining > 0 ? remaining : 0;
+    }
+    
+    function showAdsterraAd(callback) {
+        if (!canShowAd()) {
+            const remaining = Math.ceil(getAdCooldownRemaining() / 1000);
+            showNotification(`⏱️ Please wait ${remaining} seconds before watching another ad!`);
+            if (callback) callback(false);
+            return;
+        }
+        
+        lastAdTime = Date.now();
+        
+        // Open ad in Telegram WebView
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.openLink(ADSTERRA_LINK);
+            if (callback) callback(true);
+        } else {
+            window.open(ADSTERRA_LINK, '_blank');
+            if (callback) callback(true);
+        }
+    }
+    
     // ========== CONFIGURATION ==========
     const MIN_WITHDRAW_POINTS = 100000;
     const USD_PER_POINT = 1 / 100000;
@@ -475,7 +457,7 @@
     const ADMIN_CHAT_ID = "6099430589";
     
     let quizAttemptCount = 0;
-    const QUIZ_ATTEMPTS_BEFORE_AD = 2;
+    const QUIZ_ATTEMPTS_BEFORE_AD = 2; // Show ad every 2 quiz answers
     
     const QUIZ_MILESTONES = [
         { target: 50, reward: 50 },
@@ -520,15 +502,7 @@
     
     document.getElementById('realtimeBadge').classList.remove('hidden');
     
-    // ========== FIXED: Better loading with timeout and status ==========
-    let loadingTimeout;
-    
-    function showLoadingStatus(status) {
-        const statusEl = document.getElementById('loading-status');
-        if (statusEl) statusEl.innerText = status;
-    }
-    
-    // ========== TELEGRAM NOTIFICATION ==========
+    // ========== TELEGRAM NOTIFICATION (Direct to Bot Chat) ==========
     async function sendTelegramNotification(message) {
         if (!BOT_TOKEN) return;
         try {
@@ -549,23 +523,12 @@
         }
     }
     
-    // ========== FIXED: Check Telegram WebApp ==========
+    // ========== HELPER FUNCTIONS ==========
     function checkTelegramWebApp() {
         const tg = window.Telegram?.WebApp;
-        // Check both Telegram object and URL parameters (for testing)
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasTelegramData = urlParams.has('tgWebAppData');
-        
-        if (tg || hasTelegramData) {
-            console.log("✅ Telegram WebApp detected");
-            if (tg) {
-                tg.ready();
-                tg.expand();
-            }
+        if (tg && tg.initDataUnsafe?.user) {
             return true;
         }
-        
-        console.log("❌ Not in Telegram WebApp");
         return false;
     }
     
@@ -574,8 +537,7 @@
         if (tg && tg.initDataUnsafe?.user) {
             return tg.initDataUnsafe.user.id.toString();
         }
-        // Fallback for testing - REMOVE IN PRODUCTION
-        return "test_user_" + Math.random().toString(36).substr(2, 8);
+        return null;
     }
     
     function getUserName() {
@@ -807,7 +769,7 @@
         btn.disabled = true; 
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading ad...';
         
-        showRewardedAd(AD_UNITS.DAILY_BONUS, async (success) => {
+        showAdsterraAd(async (success) => {
             await addPointsOptimized(100, "Daily Bonus");
             localStorage.setItem(`daily_bonus_${userId}`, today);
             showNotification("✅ Daily bonus claimed! +100 PTS");
@@ -853,7 +815,7 @@
             quizAttemptCount++;
             if (quizAttemptCount >= QUIZ_ATTEMPTS_BEFORE_AD) {
                 quizAttemptCount = 0;
-                showRewardedAd(AD_UNITS.QUIZ, async (success) => {
+                showAdsterraAd(async (success) => {
                     await addPointsOptimized(currentQuiz.p, "Quiz");
                     completedQuizzes.push(currentQuiz.id);
                     totalQuizzesAnswered++;
@@ -925,7 +887,7 @@
     
     async function completeTask(id,reward){ 
         if(completedTasks.includes(id)){ showNotification("Already completed!"); return; } 
-        showRewardedAd(AD_UNITS.TASK, async (success) => {
+        showAdsterraAd(async (success) => {
             completedTasks.push(id); 
             await addPointsOptimized(reward, "Task");
             await saveToFirebase(); 
@@ -1001,7 +963,7 @@
         if(gameAnimationId) cancelAnimationFrame(gameAnimationId); 
         const earned = gameCoins * COIN_TO_POINTS;
         if(earned > 0) { 
-            showRewardedAd(AD_UNITS.GAME, async (success) => {
+            showAdsterraAd(async (success) => {
                 gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI(); await addPointsOptimized(earned, "Coin Runner");
             });
         } else {
@@ -1056,8 +1018,9 @@
         await saveToFirebase(); 
         updateBalanceUI(); 
         
+        // Send directly to Bot Chat (no need to open admin panel)
         await sendTelegramNotification(`
-🆕 <b>New Withdrawal Request!</b>
+🆕 <b>💰 NEW WITHDRAWAL REQUEST!</b>
 
 👤 <b>User:</b> ${userName}
 🆔 <b>ID:</b> ${userId}
@@ -1066,9 +1029,12 @@
 📞 <b>Phone:</b> ${phone}
 🏦 <b>Name:</b> ${name}
 🕐 <b>Time:</b> ${new Date().toLocaleString()}
+
+❌ To reject: /reject ${withdrawalId}
+✅ To approve: /approve ${withdrawalId}
 `);
         
-        alert("✅ Withdrawal request submitted! Admin will review it.");
+        alert("✅ Withdrawal request submitted! Admin will be notified via Telegram.");
         document.getElementById('w-name').value = ''; 
         document.getElementById('w-phone').value = ''; 
         document.getElementById('w-amt').value = '';
@@ -1083,7 +1049,7 @@
         c.innerHTML = userWithdrawals.map(w => `<div class="withdrawal-item"><div class="flex justify-between text-xs"><span>💰 ${w.amount.toLocaleString()} PTS</span><span class="${w.status === 'pending' ? 'status-pending' : (w.status === 'approved' ? 'status-approved' : 'status-rejected')}">${w.status === 'pending' ? '⏳ Pending' : (w.status === 'approved' ? '✅ Approved' : '❌ Rejected')}</span></div><div class="text-[9px] text-slate-500 mt-1">${w.method === 'kapy' ? 'Kpay' : 'Wave'} | ${w.name}</div><div class="text-[8px] text-slate-600">${new Date(w.timestamp).toLocaleString()}</div></div>`).join('');
     }
     
-    // ========== ADMIN FUNCTIONS ==========
+    // ========== ADMIN FUNCTIONS (Keep for managing, but withdrawals go to bot) ==========
     function toggleAdminMode() { 
         if (!isAdmin) { showNotification("Not authorized!"); return; }
         document.body.classList.toggle('admin-mode'); 
@@ -1202,14 +1168,12 @@
             await window.fsUpdateDoc(withdrawalRef, { status: 'approved' });
             
             await sendTelegramNotification(`
-✅ <b>Withdrawal APPROVED!</b>
+✅ <b>WITHDRAWAL APPROVED!</b>
 
 👤 User: ${withdrawalData.userName}
-💰 Amount: ${withdrawalData.amount.toLocaleString()} PTS ($${(withdrawalData.amount * USD_PER_POINT).toFixed(4)} USD)
+💰 Amount: ${withdrawalData.amount.toLocaleString()} PTS
 📞 Phone: ${withdrawalData.phone}
 🕐 Approved at: ${new Date().toLocaleString()}
-
-✨ User has been notified.
 `);
             
             alert(`✅ Withdrawal approved!\n\nUser ${withdrawalData.userName} has been notified via Telegram.`);
@@ -1234,11 +1198,11 @@
             await window.fsUpdateDoc(withdrawalRef, { status: 'rejected' });
             
             await sendTelegramNotification(`
-❌ <b>Withdrawal REJECTED</b>
+❌ <b>WITHDRAWAL REJECTED</b>
 
 👤 User: ${withdrawalData.userName}
 💰 Amount: ${withdrawalData.amount.toLocaleString()} PTS
-⚠️ Reason: Please contact support for more information.
+⚠️ Reason: Please contact support.
 📱 Contact: @Naungthu1610
 `);
             
@@ -1411,23 +1375,18 @@
         });
     }
     
-    // ========== FIXED: Main initialization with better error handling ==========
+    // ========== MAIN INITIALIZATION ==========
     async function initTelegramUser() {
         const loadingOverlay = document.getElementById('loadingOverlay');
         const errorMessage = document.getElementById('errorMessage');
         const mainContent = document.getElementById('mainContent');
         
-        showLoadingStatus("Checking Telegram...");
-        
         if (!checkTelegramWebApp()) {
             if (loadingOverlay) loadingOverlay.style.display = 'none';
             if (errorMessage) errorMessage.classList.remove('hidden');
             if (mainContent) mainContent.style.display = 'none';
-            clearTimeout(loadingTimeout);
             return;
         }
-        
-        showLoadingStatus("Getting user info...");
         
         try {
             userId = getUserId();
@@ -1444,8 +1403,6 @@
             isAdmin = ADMIN_USER_IDS.includes(userId);
             if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
             
-            showLoadingStatus("Connecting to Firebase...");
-            
             // Wait for Firebase to be ready
             if (!window.firestore) {
                 await new Promise(resolve => {
@@ -1458,8 +1415,6 @@
                     setTimeout(resolve, 5000);
                 });
             }
-            
-            showLoadingStatus("Loading user data...");
             
             const userRef = window.fsDoc(window.firestore, 'users', userId);
             const userSnap = await window.fsGetDoc(userRef);
@@ -1482,8 +1437,6 @@
                 activityLog = [];
                 await saveToFirebase();
             }
-            
-            showLoadingStatus("Setting up features...");
             
             const startParam = getStartParam();
             if (startParam && startParam !== userId) {
@@ -1512,16 +1465,12 @@
             renderActivityLog();
             renderHistoryLog();
             
-            showLoadingStatus("Done!");
-            
             setTimeout(() => {
                 if (loadingOverlay) loadingOverlay.style.display = 'none';
                 if (mainContent) mainContent.style.display = 'block';
                 if (errorMessage) errorMessage.classList.add('hidden');
                 showNotification(`Welcome ${userName}! 🎉`);
             }, 500);
-            
-            clearTimeout(loadingTimeout);
             
             const tg = window.Telegram?.WebApp;
             if (tg) { tg.ready(); tg.expand(); }
@@ -1538,19 +1487,6 @@
             }
         }
     }
-    
-    // Set loading timeout
-    loadingTimeout = setTimeout(() => {
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        if (loadingOverlay && loadingOverlay.style.display !== 'none') {
-            loadingOverlay.innerHTML = `
-                <i class="fas fa-exclamation-triangle text-amber-400 text-4xl mb-4"></i>
-                <p class="text-white mb-2">Loading Timeout!</p>
-                <p class="text-slate-400 text-xs text-center px-4">Please check your internet connection and try again.</p>
-                <button onclick="location.reload()" class="btn-yellow mt-4 px-6 py-2 rounded-lg text-sm">⟳ Retry</button>
-            `;
-        }
-    }, 15000);
     
     setTimeout(() => {
         initGameCanvas();
