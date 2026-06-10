@@ -418,17 +418,20 @@
 </nav>
 
 <script>
-    // ========== ADSTERRA SMARTLINK (Maximum Ads) ==========
+    // ========== ADSTERRA SMARTLINK ==========
     const ADSTERRA_LINK = "https://www.effectivecpmnetwork.com/jy1nnez9i?key=7ef36a05482f0d144335daeabb0cb584";
     
-    // MINIMUM COOLDOWN - 5 seconds between ads (maximum frequency)
+    // Main ad cooldown - 10 seconds
     let lastAdTime = 0;
-    const AD_COOLDOWN = 5000; // 5 seconds only for maximum ads
+    const AD_COOLDOWN = 10000;
     
     // Bonus ad cooldown - 30 seconds
     let lastBonusAdTime = 0;
     const BONUS_AD_COOLDOWN = 30000;
     let bonusCooldownInterval = null;
+    
+    // Track if points were added for this session
+    let pointsAddedThisSession = false;
     
     function canShowAd() {
         const now = Date.now();
@@ -445,6 +448,12 @@
     function getBonusCooldownRemaining() {
         const now = Date.now();
         const remaining = BONUS_AD_COOLDOWN - (now - lastBonusAdTime);
+        return remaining > 0 ? remaining : 0;
+    }
+    
+    function getAdCooldownRemaining() {
+        const now = Date.now();
+        const remaining = AD_COOLDOWN - (now - lastAdTime);
         return remaining > 0 ? remaining : 0;
     }
     
@@ -468,13 +477,52 @@
         }
     }
     
-    function getAdCooldownRemaining() {
-        const now = Date.now();
-        const remaining = AD_COOLDOWN - (now - lastAdTime);
-        return remaining > 0 ? remaining : 0;
+    // ========== MAIN POINTS ADD FUNCTION ==========
+    async function addPointsToMainBalance(pts, source) {
+        if (!currentUser || !userId) {
+            console.error("Cannot add points: No user found");
+            showNotification("Please wait for app to load!");
+            return false;
+        }
+        
+        try {
+            balance += pts;
+            if (currentUser) {
+                currentUser.balance = balance;
+                currentUser.totalEarned = (currentUser.totalEarned || 0) + pts;
+            }
+            
+            // Save to Firebase
+            const userRef = window.fsDoc(window.firestore, 'users', userId);
+            await window.fsUpdateDoc(userRef, {
+                balance: balance,
+                totalEarned: currentUser?.totalEarned || pts
+            });
+            
+            // Update leaderboard
+            const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', userId);
+            await window.fsSetDoc(leaderboardRef, {
+                name: userName || 'User',
+                balance: balance
+            }, { merge: true });
+            
+            // Add activity log
+            await addActivityLog(source, pts, 'earn');
+            
+            // Update UI
+            updateBalanceUI();
+            
+            showNotification(`✅ +${pts} PTS from ${source}!`);
+            console.log(`Points added: +${pts} from ${source}. New balance: ${balance}`);
+            return true;
+        } catch(e) {
+            console.error("Error adding points:", e);
+            showNotification("Error adding points. Please try again.");
+            return false;
+        }
     }
     
-    // ========== BONUS AD - ALL POINTS GO TO MAIN BALANCE ==========
+    // ========== BONUS AD FUNCTION ==========
     async function claimBonusAd() {
         if (!currentUser) {
             showNotification("Please wait for app to load!");
@@ -494,10 +542,11 @@
         showAdsterraAd(async (success) => {
             if (success) {
                 lastBonusAdTime = Date.now();
-                // ✅ ALL BONUS POINTS GO TO MAIN BALANCE
-                await addPointsOptimized(50, "Bonus Ad");
-                showNotification("🎁 Bonus claimed! +50 PTS added to your main balance!");
-                startBonusCooldownTimer();
+                const added = await addPointsToMainBalance(50, "Bonus Ad");
+                if (added) {
+                    showNotification("🎁 Bonus claimed! +50 PTS added to your balance!");
+                    startBonusCooldownTimer();
+                }
             } else {
                 showNotification("Ad failed to load, please try again!");
             }
@@ -529,9 +578,14 @@
         bonusCooldownInterval = setInterval(updateTimer, 1000);
     }
     
-    // ========== COPY & SHARE INVITE LINK (Direct Share to Telegram) ==========
+    // ========== COPY & SHARE INVITE LINK ==========
     function copyRef() {
         const link = document.getElementById('ref-link').innerHTML;
+        if (!link || link === 'Loading...') {
+            showNotification("Please wait, link is loading...");
+            return;
+        }
+        
         navigator.clipboard.writeText(link).then(() => {
             showNotification("✅ Invite link copied to clipboard!");
             
@@ -550,9 +604,13 @@
         });
     }
     
-    // DIRECT SHARE TO TELEGRAM CHAT
     function shareRef() {
         const link = document.getElementById('ref-link').innerHTML;
+        if (!link || link === 'Loading...') {
+            showNotification("Please wait, link is loading...");
+            return;
+        }
+        
         const message = `🎁 Join MM GOLDEN and earn rewards!\n\nInvite link: ${link}\n\nGet 500 PTS for each friend you invite!`;
         
         const tg = window.Telegram?.WebApp;
@@ -568,9 +626,61 @@
                 }
             });
         } else {
-            // Fallback - copy to clipboard
             navigator.clipboard.writeText(link);
             showNotification("✅ Link copied! Share with friends!");
+        }
+    }
+    
+    // ========== REFERRAL FUNCTION (FIXED) ==========
+    async function handleReferral(refId) {
+        if (!refId || refId === userId) {
+            console.log("No valid referral or self-referral");
+            return;
+        }
+        
+        try {
+            console.log("🔗 Processing referral from:", refId);
+            
+            // Get inviter's data
+            const inviterRef = window.fsDoc(window.firestore, 'users', refId);
+            const inviterSnap = await window.fsGetDoc(inviterRef);
+            
+            if (!inviterSnap.exists()) {
+                console.log("Inviter not found:", refId);
+                return;
+            }
+            
+            const inviterData = inviterSnap.data();
+            const alreadyReferred = inviterData.invitedFriends?.includes(userId);
+            
+            if (alreadyReferred) {
+                console.log("Already referred this user");
+                return;
+            }
+            
+            // Add points to inviter
+            const newInviterBalance = (inviterData.balance || 0) + REFERRAL_POINTS;
+            const newInviterTotal = (inviterData.totalEarned || 0) + REFERRAL_POINTS;
+            const newInvitedFriends = [...(inviterData.invitedFriends || []), userId];
+            
+            await window.fsUpdateDoc(inviterRef, {
+                balance: newInviterBalance,
+                totalEarned: newInviterTotal,
+                invitedFriends: newInvitedFriends
+            });
+            
+            // Update leaderboard
+            const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
+            await window.fsSetDoc(leaderboardRef, {
+                balance: newInviterBalance,
+                name: inviterData.name
+            }, { merge: true });
+            
+            console.log(`✅ Added ${REFERRAL_POINTS} PTS to ${inviterData.name} for referring ${userName}`);
+            showNotification(`🎉 +${REFERRAL_POINTS} PTS given to ${inviterData.name} for inviting you!`);
+            
+        } catch(e) {
+            console.error("Referral error:", e);
         }
     }
     
@@ -686,7 +796,9 @@
         if (tg && tg.initDataUnsafe?.start_param) {
             return tg.initDataUnsafe.start_param;
         }
-        return null;
+        // Check URL for start parameter (for testing)
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('start');
     }
     
     function showNotification(msg, duration = 2500) {
@@ -707,19 +819,6 @@
         if(id === 'sec-quiz') updateQuizCounterUI();
         if(id === 'sec-history') renderHistoryLog();
         if(id === 'sec-tasks') startBonusCooldownTimer();
-    }
-    
-    // ✅ MAIN FUNCTION TO ADD POINTS - ALL POINTS GO HERE
-    async function addPointsOptimized(pts, source) {
-        balance += pts;
-        if (currentUser) { 
-            currentUser.balance = balance; 
-            currentUser.totalEarned = (currentUser.totalEarned || 0) + pts; 
-        }
-        await addActivityLog(source, pts, 'earn');
-        await saveToFirebase();
-        updateBalanceUI();
-        showNotification(`+${pts} PTS from ${source} added to main balance!`);
     }
     
     async function addActivityLog(action, amount, type) {
@@ -820,40 +919,14 @@
                     balance: balance
                 }, { merge: true });
             } catch(e) { console.error("Save error:", e); }
-        }, 500); // Faster save - 500ms
-    }
-    
-    // ========== REFERRAL FUNCTIONS ==========
-    async function handleReferral(refId) {
-        if (refId === userId) return;
-        try {
-            console.log("🔗 Referral detected! Inviter:", refId);
-            const inviterRef = window.fsDoc(window.firestore, 'users', refId);
-            const inviterSnap = await window.fsGetDoc(inviterRef);
-            if (!inviterSnap.exists()) return;
-            const inviterData = inviterSnap.data();
-            const alreadyReferred = inviterData.invitedFriends?.includes(userId);
-            if (alreadyReferred) return;
-            
-            const newInviterBalance = (inviterData.balance || 0) + REFERRAL_POINTS;
-            const newInviterTotal = (inviterData.totalEarned || 0) + REFERRAL_POINTS;
-            await window.fsUpdateDoc(inviterRef, {
-                balance: newInviterBalance,
-                totalEarned: newInviterTotal,
-                invitedFriends: window.fsArrayUnion(userId)
-            });
-            
-            const leaderboardRef = window.fsDoc(window.firestore, 'leaderboard', refId);
-            await window.fsSetDoc(leaderboardRef, { balance: newInviterBalance, name: inviterData.name }, { merge: true });
-            
-            showNotification(`🎉 +${REFERRAL_POINTS} PTS given to ${inviterData.name} for inviting you!`);
-        } catch(e) { console.error("Referral error:", e); }
+        }, 500);
     }
     
     function renderRefUI() { 
         if(!userId) return;
         const inviteLink = `https://t.me/${BOT_USERNAME}?start=${userId}`;
-        document.getElementById('ref-link').innerHTML = inviteLink; 
+        const refLinkElement = document.getElementById('ref-link');
+        if (refLinkElement) refLinkElement.innerHTML = inviteLink;
         document.getElementById('ref-count').innerText = invitedFriends.length; 
         document.getElementById('ref-earned').innerText = (invitedFriends.length * REFERRAL_POINTS).toLocaleString(); 
         const c = document.getElementById('ref-list'); 
@@ -878,9 +951,9 @@
         
         showAdsterraAd(async (success) => {
             if (success) {
-                await addPointsOptimized(100, "Daily Bonus");
+                await addPointsToMainBalance(100, "Daily Bonus");
                 localStorage.setItem(`daily_bonus_${userId}`, today);
-                showNotification("✅ Daily bonus claimed! +100 PTS added to main balance!");
+                showNotification("✅ Daily bonus claimed! +100 PTS!");
             } else {
                 showNotification("Ad failed! Please try again.");
             }
@@ -928,26 +1001,26 @@
                 quizAttemptCount = 0;
                 showAdsterraAd(async (success) => {
                     if (success) {
-                        await addPointsOptimized(currentQuiz.p, "Quiz");
+                        await addPointsToMainBalance(currentQuiz.p, "Quiz");
                         completedQuizzes.push(currentQuiz.id);
                         totalQuizzesAnswered++;
                         await saveToFirebase();
                         renderQuiz();
                         updateQuizCounterUI();
-                        showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
+                        showNotification(`✅ Correct! +${currentQuiz.p} PTS!`);
                         selectedChoice = null;
                     } else {
                         showNotification("Ad failed! No points awarded.");
                     }
                 });
             } else {
-                await addPointsOptimized(currentQuiz.p, "Quiz");
+                await addPointsToMainBalance(currentQuiz.p, "Quiz");
                 completedQuizzes.push(currentQuiz.id);
                 totalQuizzesAnswered++;
                 await saveToFirebase();
                 renderQuiz();
                 updateQuizCounterUI();
-                showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
+                showNotification(`✅ Correct! +${currentQuiz.p} PTS!`);
                 selectedChoice = null;
             }
         } else {
@@ -974,7 +1047,7 @@
     async function claimMilestoneReward(target, reward) {
         if (claimedMilestones.includes(target)) { showNotification("Already claimed!"); return; }
         if (totalQuizzesAnswered < target) { showNotification(`Need ${target} answers!`); return; }
-        await addPointsOptimized(reward, `Milestone ${target}`);
+        await addPointsToMainBalance(reward, `Milestone ${target}`);
         claimedMilestones.push(target);
         await saveToFirebase();
         updateQuizCounterUI();
@@ -1005,10 +1078,10 @@
         showAdsterraAd(async (success) => {
             if (success) {
                 completedTasks.push(id); 
-                await addPointsOptimized(reward, "Task");
+                await addPointsToMainBalance(reward, "Task");
                 await saveToFirebase(); 
                 renderTasks(); 
-                showNotification(`✅ +${reward} PTS added to main balance!`);
+                showNotification(`✅ +${reward} PTS!`);
             } else {
                 showNotification("Ad failed! Please try again.");
             }
@@ -1084,8 +1157,8 @@
         if(earned > 0) { 
             showAdsterraAd(async (success) => {
                 if (success) {
-                    gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI(); await addPointsOptimized(earned, "Coin Runner");
-                    showNotification(`🎮 Game over! +${earned} PTS added to main balance!`);
+                    gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI(); await addPointsToMainBalance(earned, "Coin Runner");
+                    showNotification(`🎮 Game over! +${earned} PTS!`);
                 } else {
                     gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI();
                     showNotification("Ad failed! No points awarded.");
@@ -1170,7 +1243,7 @@
         c.innerHTML = userWithdrawals.map(w => `<div class="withdrawal-item"><div class="flex justify-between text-xs"><span>💰 ${w.amount.toLocaleString()} PTS</span><span class="${w.status === 'pending' ? 'status-pending' : (w.status === 'approved' ? 'status-approved' : 'status-rejected')}">${w.status === 'pending' ? '⏳ Pending' : (w.status === 'approved' ? '✅ Approved' : '❌ Rejected')}</span></div><div class="text-[9px] text-slate-500 mt-1">${w.method === 'kapy' ? 'Kpay' : 'Wave'} | ${w.name}</div><div class="text-[8px] text-slate-600">${new Date(w.timestamp).toLocaleString()}</div></div>`).join('');
     }
     
-    // ========== ADMIN FUNCTIONS (Keep for managing) ==========
+    // ========== ADMIN FUNCTIONS (Simplified - keep existing) ==========
     function toggleAdminMode() { 
         if (!isAdmin) { showNotification("Not authorized!"); return; }
         document.body.classList.toggle('admin-mode'); 
@@ -1192,7 +1265,7 @@
             const usersSnapshot = await window.fsGetDocs(usersCollection);
             const users = [];
             usersSnapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-            if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td><tr>'; return; }
+            if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></tr>'; return; }
             tbody.innerHTML = users.slice(0, 50).map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
         } catch(e) { console.error(e); }
     }
@@ -1227,7 +1300,7 @@
     }
     
     async function adjustUserPoints(){ 
-        if (!isAdmin) { showNotification("Not authorized!"); return; }
+        if (!isAdmin) return;
         const searchTerm = document.getElementById('search-user').value.trim();
         const points = parseInt(document.getElementById('adjust-points').value);
         const action = document.getElementById('adjust-action').value;
@@ -1280,61 +1353,31 @@
     async function approveWithdrawal(id, amount) {
         if (!isAdmin) return;
         if(!confirm(`Approve withdrawal of ${amount.toLocaleString()} PTS?`)) return;
-        
         try {
             const withdrawalRef = window.fsDoc(window.firestore, 'withdrawals', id);
             const withdrawalSnap = await window.fsGetDoc(withdrawalRef);
             const withdrawalData = withdrawalSnap.data();
-            
             await window.fsUpdateDoc(withdrawalRef, { status: 'approved' });
-            
-            await sendTelegramNotification(`
-✅ <b>WITHDRAWAL APPROVED!</b>
-
-👤 User: ${withdrawalData.userName}
-💰 Amount: ${withdrawalData.amount.toLocaleString()} PTS
-📞 Phone: ${withdrawalData.phone}
-🕐 Approved at: ${new Date().toLocaleString()}
-`);
-            
-            alert(`✅ Withdrawal approved!\n\nUser ${withdrawalData.userName} has been notified via Telegram.`);
-            showNotification("✅ Withdrawal approved! User has been notified.");
+            await sendTelegramNotification(`✅ <b>WITHDRAWAL APPROVED!</b>\n\n👤 User: ${withdrawalData.userName}\n💰 Amount: ${withdrawalData.amount.toLocaleString()} PTS`);
+            alert(`✅ Withdrawal approved!`);
+            showNotification("✅ Withdrawal approved!");
             renderAdminWithdrawals();
-            
-        } catch(e) { 
-            console.error(e);
-            alert("Error approving withdrawal: " + e.message);
-        }
+        } catch(e) { console.error(e); alert("Error approving withdrawal"); }
     }
     
     async function rejectWithdrawal(id) {
         if (!isAdmin) return;
         if(!confirm(`Reject this withdrawal?`)) return;
-        
         try {
             const withdrawalRef = window.fsDoc(window.firestore, 'withdrawals', id);
             const withdrawalSnap = await window.fsGetDoc(withdrawalRef);
             const withdrawalData = withdrawalSnap.data();
-            
             await window.fsUpdateDoc(withdrawalRef, { status: 'rejected' });
-            
-            await sendTelegramNotification(`
-❌ <b>WITHDRAWAL REJECTED</b>
-
-👤 User: ${withdrawalData.userName}
-💰 Amount: ${withdrawalData.amount.toLocaleString()} PTS
-⚠️ Reason: Please contact support.
-📱 Contact: @Naungthu1610
-`);
-            
-            alert(`❌ Withdrawal rejected!\n\nUser ${withdrawalData.userName} has been notified.`);
-            showNotification("❌ Withdrawal rejected! User has been notified.");
+            await sendTelegramNotification(`❌ <b>WITHDRAWAL REJECTED</b>\n\n👤 User: ${withdrawalData.userName}\n💰 Amount: ${withdrawalData.amount.toLocaleString()} PTS`);
+            alert(`❌ Withdrawal rejected!`);
+            showNotification("❌ Withdrawal rejected!");
             renderAdminWithdrawals();
-            
-        } catch(e) { 
-            console.error(e);
-            alert("Error rejecting withdrawal: " + e.message);
-        }
+        } catch(e) { console.error(e); alert("Error rejecting withdrawal"); }
     }
     
     async function addAdminTask(){ 
@@ -1497,7 +1540,7 @@
         });
     }
     
-    // ========== MAIN INITIALIZATION (FASTER LOADING) ==========
+    // ========== MAIN INITIALIZATION ==========
     async function initTelegramUser() {
         const loadingOverlay = document.getElementById('loadingOverlay');
         const errorMessage = document.getElementById('errorMessage');
@@ -1525,7 +1568,6 @@
             isAdmin = ADMIN_USER_IDS.includes(userId);
             if (isAdmin) document.getElementById('admin-mode-btn').classList.remove('hidden');
             
-            // Faster Firebase connection check
             if (!window.firestore) {
                 await new Promise(resolve => {
                     let elapsed = 0;
@@ -1561,9 +1603,11 @@
                 await saveToFirebase();
             }
             
+            // Handle referral from URL
             const startParam = getStartParam();
             if (startParam && startParam !== userId) {
-                setTimeout(() => handleReferral(startParam), 2000);
+                console.log("Processing referral param:", startParam);
+                setTimeout(() => handleReferral(startParam), 3000);
             }
             
             const today = new Date().toDateString();
@@ -1589,7 +1633,6 @@
             renderHistoryLog();
             startBonusCooldownTimer();
             
-            // Faster loading - immediately hide overlay
             setTimeout(() => {
                 if (loadingOverlay) loadingOverlay.style.display = 'none';
                 if (mainContent) mainContent.style.display = 'block';
@@ -1616,7 +1659,7 @@
     setTimeout(() => {
         initGameCanvas();
         initTelegramUser();
-    }, 300); // Faster start - 300ms instead of 500ms
+    }, 300);
 </script>
 </body>
 </html>
