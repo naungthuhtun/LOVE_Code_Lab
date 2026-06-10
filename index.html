@@ -363,8 +363,8 @@
 </main>
 
 <nav class="fixed bottom-0 w-full bg-[#0a0e1a]/95 backdrop-blur-sm border-t border-white/10 flex justify-around py-3 z-50">
-    <button onclick="showSec('sec-home')" class="nav-btn flex flex-col items-center text-amber-500 nav-active py-1"><i class="fas fa-home text-xl"></i><span class="text-[9px] mt-0.5">Home</span></button>
-    <button onclick="showSec('sec-quiz')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-brain text-xl"></i><span class="text-[9px] mt-0.5">Quiz</span></button>
+    <button onclick="showSecWithAd('sec-home')" class="nav-btn flex flex-col items-center text-amber-500 nav-active py-1"><i class="fas fa-home text-xl"></i><span class="text-[9px] mt-0.5">Home</span></button>
+    <button onclick="showSecWithAd('sec-quiz')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-brain text-xl"></i><span class="text-[9px] mt-0.5">Quiz</span></button>
     <button onclick="showSec('sec-invite')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-user-plus text-xl"></i><span class="text-[9px] mt-0.5">Invite</span></button>
     <button onclick="showSec('sec-tasks')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-tasks text-xl"></i><span class="text-[9px] mt-0.5">Tasks</span></button>
     <button onclick="showSec('sec-about')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-cog text-xl"></i><span class="text-[9px] mt-0.5">Setting</span></button>
@@ -381,7 +381,7 @@
     const ADMIN_PASSWORD = "871033";
     const ADMIN_USER_IDS = ["6099430589"];
     
-    // RichInfo Ad Controller (Fixed)
+    // RichInfo Ad Controller
     let tgAdsController = null;
     let isAdReady = false;
     
@@ -406,7 +406,7 @@
         }
     }
     
-    // Show Rewarded Ad - Fixed version
+    // Show Rewarded Ad
     function showRewardedAd(callback) {
         if (tgAdsController && isAdReady) {
             try {
@@ -431,6 +431,13 @@
             console.log("Ad not ready, skipping");
             if (callback) callback();
         }
+    }
+    
+    // Show ad before switching sections
+    function showSecWithAd(id) {
+        showRewardedAd(() => {
+            showSec(id);
+        });
     }
     
     let quizAttemptCount = 0;
@@ -458,8 +465,9 @@
     let isAdmin = false;
     let activityLog = [];
     let pendingGameReward = 0;
-    let pendingTaskCallback = null;
-    let pendingBonusCallback = null;
+    let pendingQuizPoints = 0;
+    let pendingQuizId = null;
+    let pendingBonusAmount = 0;
     
     let unsubscribeQuizzes = null;
     let unsubscribeTasks = null;
@@ -728,15 +736,19 @@
             quizAttemptCount++;
             if (quizAttemptCount >= QUIZ_ATTEMPTS_BEFORE_AD) {
                 quizAttemptCount = 0;
+                pendingQuizPoints = currentQuiz.p;
+                pendingQuizId = currentQuiz.id;
                 showRewardedAd(async () => {
-                    await addPointsOptimized(currentQuiz.p, "Quiz");
-                    completedQuizzes.push(currentQuiz.id);
+                    await addPointsOptimized(pendingQuizPoints, "Quiz");
+                    completedQuizzes.push(pendingQuizId);
                     totalQuizzesAnswered++;
                     await saveToFirebase();
                     renderQuiz();
                     updateQuizCounterUI();
-                    showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
+                    showNotification(`✅ Correct! +${pendingQuizPoints} PTS (Total: ${totalQuizzesAnswered})`);
                     selectedChoice = null;
+                    pendingQuizPoints = 0;
+                    pendingQuizId = null;
                 });
             } else {
                 await addPointsOptimized(currentQuiz.p, "Quiz");
@@ -1010,10 +1022,10 @@
         if(earned > 0) { 
             pendingGameReward = earned;
             showRewardedAd(async () => {
+                await addPointsOptimized(pendingGameReward, "Coin Runner");
                 gamesPlayedToday++; 
                 await saveToFirebase(); 
                 updateGameRemainingUI(); 
-                await addPointsOptimized(pendingGameReward, "Coin Runner");
                 pendingGameReward = 0;
             });
         }
@@ -1125,7 +1137,7 @@
             const usersSnapshot = await window.fsGetDocs(usersCollection);
             const users = [];
             usersSnapshot.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
-            if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></table>'; return; }
+            if(users.length === 0){ tbody.innerHTML='<tr><td colspan="3" class="text-center text-slate-500">No users yet</td></td>'; return; }
             tbody.innerHTML = users.slice(0, 50).map(user => `<tr class="user-row" onclick="viewUserDetails('${user.id}')"><td class="text-[9px]">${user.name || user.id.substring(0,8)}</td><td class="text-[9px] text-amber-400">${(user.balance || 0).toLocaleString()}</td><td onclick="event.stopPropagation()"><button onclick="quickAdjustPoints('${user.id}',100)" class="bg-green-600 px-2 py-1 rounded text-[8px]">+100</button><button onclick="quickAdjustPoints('${user.id}',500)" class="bg-blue-600 px-2 py-1 rounded text-[8px] ml-1">+500</button></td></tr>`).join('');
         } catch(e) { console.error(e); }
     }
