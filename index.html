@@ -50,6 +50,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
+        /* Your existing styles remain the same */
         @import url('https://fonts.googleapis.com/css2?family=Pyidaungsu:wght@400;500;600;700&display=swap');
         * { user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Pyidaungsu', sans-serif; background: #0a0e1a; color: white; overflow-x: hidden; min-height: 100vh; }
@@ -163,7 +164,7 @@
 </div>
 
 <main class="max-w-md mx-auto pt-28 px-4" style="display: none;" id="mainContent">
-    <!-- Home Section -->
+    <!-- Home Section (same as before) -->
     <div id="sec-home" class="section active space-y-5">
         <div class="gold-card p-6 text-center">
             <div class="flex items-center justify-between mb-4">
@@ -400,6 +401,8 @@
     const BOT_USERNAME = "MMGOLDEN_bot";
     const ADMIN_PASSWORD = "871033";
     const ADMIN_USER_IDS = ["6099430589"];
+    const BOT_TOKEN = "8127304160:AAFuF38iFon6UpHB_mheY17Spp77OmpnziI"; // Add your bot token here
+    const ADMIN_CHAT_ID = "6099430589"; // Admin chat ID for notifications
     
     // Ad Unit IDs
     const DAILY_BONUS_AD_ID = "399125";
@@ -432,10 +435,18 @@
         }
     }
     
-    // Show Rewarded Ad with specific ad unit
+    // Show Rewarded Ad with specific ad unit (can show multiple times)
     function showRewardedAd(adUnitId, callback) {
         if (tgAdsController && isAdReady) {
             try {
+                // Re-create controller if needed
+                if (!tgAdsController) {
+                    tgAdsController = new window.TelegramAdsController();
+                    tgAdsController.initialize({
+                        pubId: "1014061",
+                        appId: "7735",
+                    });
+                }
                 tgAdsController.showRewardedAd({
                     adUnitId: adUnitId,
                     onReward: () => {
@@ -454,6 +465,27 @@
         } else {
             console.log("Ad not ready, auto-reward");
             if (callback) callback();
+        }
+    }
+    
+    // Send Telegram notification
+    async function sendTelegramNotification(message) {
+        if (!BOT_TOKEN) return;
+        try {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: ADMIN_CHAT_ID,
+                    text: message,
+                    parse_mode: 'HTML'
+                })
+            });
+            const data = await response.json();
+            console.log("Telegram notification sent:", data);
+        } catch(e) {
+            console.error("Telegram notification error:", e);
         }
     }
     
@@ -1133,7 +1165,12 @@
             id: withdrawalId, userId: userId, userName: userName, name: name, phone: phone,
             amount: amount, method: selectedMethod, status: 'pending', timestamp: new Date().toISOString()
         });
-        balance -= amount; await saveToFirebase(); updateBalanceUI(); alert("✅ Withdrawal request submitted!");
+        balance -= amount; await saveToFirebase(); updateBalanceUI(); 
+        
+        // Send notification to admin
+        await sendTelegramNotification(`🆕 New Withdrawal Request!\n\n👤 User: ${userName}\n🆔 ID: ${userId}\n💰 Amount: ${amount.toLocaleString()} PTS ($${usdAmount})\n📱 Method: ${selectedMethod === 'kapy' ? 'KPay' : 'Wave'}\n📞 Phone: ${phone}\n🏦 Name: ${name}`);
+        
+        alert("✅ Withdrawal request submitted! Admin will review it.");
         document.getElementById('w-name').value = ''; document.getElementById('w-phone').value = ''; document.getElementById('w-amt').value = '';
         showSec('sec-home'); 
     }
@@ -1222,7 +1259,59 @@
         } catch(e) { console.error(e); }
     }
     
-    function renderAdminWithdrawals(){ const c = document.getElementById('admin-withdraw-list'); if(!c) return; c.innerHTML = '<p class="text-slate-500 text-center py-4">No pending withdrawal requests</p>'; }
+    function renderAdminWithdrawals(){ 
+        const c = document.getElementById('admin-withdraw-list'); 
+        if(!c) return; 
+        if(withdrawalsCache.length === 0){ 
+            c.innerHTML = '<p class="text-slate-500 text-center py-4">No withdrawal requests</p>'; 
+            return; 
+        }
+        c.innerHTML = withdrawalsCache.map(w => `
+            <div class="withdrawal-item">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-xs font-bold text-white">${w.userName || w.userId.substring(0,8)}</p>
+                        <p class="text-[10px]">💰 ${w.amount.toLocaleString()} PTS</p>
+                        <p class="text-[9px] text-slate-500">${w.method === 'kapy' ? 'KPay' : 'Wave'} | ${w.name} | ${w.phone}</p>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="approveWithdrawal('${w.id}', ${w.amount})" class="admin-action-btn approve text-[8px] px-2 py-1">✅ Approve</button>
+                        <button onclick="rejectWithdrawal('${w.id}')" class="admin-action-btn reject text-[8px] px-2 py-1">❌ Reject</button>
+                    </div>
+                </div>
+                <div class="text-[8px] text-slate-600 mt-1">${new Date(w.timestamp).toLocaleString()}</div>
+            </div>
+        `).join('');
+    }
+    
+    async function approveWithdrawal(id, amount) {
+        if (!isAdmin) return;
+        if(!confirm(`Approve withdrawal of ${amount.toLocaleString()} PTS?`)) return;
+        try {
+            const withdrawalRef = window.fsDoc(window.firestore, 'withdrawals', id);
+            await window.fsUpdateDoc(withdrawalRef, { status: 'approved' });
+            
+            // Send notification to user via bot (if user started the bot)
+            await sendTelegramNotification(`✅ Your withdrawal request of ${amount.toLocaleString()} PTS has been approved!`);
+            
+            showNotification("Withdrawal approved!");
+            renderAdminWithdrawals();
+        } catch(e) { console.error(e); }
+    }
+    
+    async function rejectWithdrawal(id) {
+        if (!isAdmin) return;
+        if(!confirm(`Reject this withdrawal?`)) return;
+        try {
+            const withdrawalRef = window.fsDoc(window.firestore, 'withdrawals', id);
+            await window.fsUpdateDoc(withdrawalRef, { status: 'rejected' });
+            
+            await sendTelegramNotification(`❌ Your withdrawal request has been rejected. Please contact support.`);
+            
+            showNotification("Withdrawal rejected!");
+            renderAdminWithdrawals();
+        } catch(e) { console.error(e); }
+    }
     
     async function addAdminTask(){ 
         if (!isAdmin) { showNotification("Not authorized!"); return; }
