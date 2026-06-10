@@ -7,6 +7,13 @@
     
     <!-- RichInfo Telegram Ad Network -->
     <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
+    <script>
+        window.TelegramAdsController = new TelegramAdsController();
+        window.TelegramAdsController.initialize({
+            pubId: "1014061",
+            appId: "7735",
+        });
+    </script>
     
     <!-- Firebase SDK -->
     <script type="module">
@@ -100,12 +107,10 @@
         .admin-action-btn.approve { background: #10b981; }
         .admin-action-btn.reject { background: #ef4444; }
         .ref-container { position: relative; background: #1e293b; border-radius: 16px; border: 1px solid #fbbf24; padding: 12px; margin-bottom: 16px; }
-        .ref-link-text { font-size: 11px; word-break: break-all; color: #fbbf24; font-family: monospace; }
-        .copy-btn { background: linear-gradient(135deg, #f59e0b, #fbbf24); border: none; border-radius: 10px; padding: 8px 12px; font-size: 11px; font-weight: bold; color: #0a0e1a; cursor: pointer; margin: 2px; }
+        .ref-link-text { font-size: 11px; word-break: break-all; color: #fbbf24; font-family: monospace; padding-right: 60px; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: linear-gradient(135deg, #f59e0b, #fbbf24); border: none; border-radius: 10px; padding: 6px 12px; font-size: 11px; font-weight: bold; color: #0a0e1a; cursor: pointer; }
         .copy-btn:active { transform: scale(0.95); }
         .copy-success { background: #10b981 !important; color: white !important; }
-        .ref-buttons { display: flex; gap: 8px; margin-top: 12px; }
-        .ref-buttons button { flex: 1; }
         .quiz-choice { background: #1e293b; border: 1px solid #fbbf24; border-radius: 12px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; text-align: left; }
         .quiz-choice:hover { background: #2d3a5e; transform: scale(1.01); }
         .quiz-choice.selected { background: #fbbf24; color: #0a0e1a; border-color: #f59e0b; }
@@ -113,6 +118,10 @@
         .nav-btn:active { transform: scale(0.95); }
         .activity-item { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; margin-bottom: 8px; border-left: 3px solid #fbbf24; }
         .activity-time { font-size: 9px; color: #6b7280; margin-top: 4px; }
+        .activity-earn { color: #10b981; }
+        .activity-spend { color: #ef4444; }
+        .btn-icon { width: 40px; height: 40px; background: rgba(0,0,0,0.3); border-radius: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-icon:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -151,6 +160,9 @@
                 <span id="display-name" class="text-sm font-medium text-amber-300">Loading...</span>
             </div>
             <div class="flex gap-2">
+                <div class="btn-icon" onclick="showSec('sec-history')">
+                    <i class="fas fa-history text-amber-400 text-sm"></i>
+                </div>
                 <button id="admin-mode-btn" onclick="toggleAdminMode()" class="text-xs text-red-400 bg-red-900/30 px-3 py-1.5 rounded-full hidden">
                     <i class="fas fa-user-shield"></i> Admin
                 </button>
@@ -198,6 +210,45 @@
         </button>
     </div>
 
+    <!-- Bonus Section -->
+    <div id="sec-bonus" class="section space-y-5">
+        <div class="gold-card p-6 text-center">
+            <div class="flex justify-center mb-4">
+                <div class="w-24 h-24 bg-gradient-to-br from-green-500/30 to-emerald-600/30 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-gem text-4xl text-green-400"></i>
+                </div>
+            </div>
+            <h3 class="text-white font-bold text-xl mb-2">🎁 Daily Bonus Video</h3>
+            <p class="text-sm text-slate-400 mb-4">Watch video ad to earn 50 PTS!</p>
+            <div class="mb-6 bg-gradient-to-r from-green-900/20 to-emerald-900/20 p-5 rounded-2xl">
+                <div class="inline-flex items-center gap-4 p-4 bg-black/40 rounded-xl">
+                    <div><i class="fas fa-video text-green-400 text-2xl"></i><p class="text-xs mt-1">Watch Ad</p></div>
+                    <div class="text-3xl text-amber-400">→</div>
+                    <div><i class="fas fa-coins text-amber-400 text-2xl"></i><p class="text-xs mt-1">+50 PTS</p></div>
+                </div>
+            </div>
+            <button id="bonus-video-btn" onclick="claimBonusVideo()" class="w-full btn-yellow py-5 text-lg font-bold rounded-xl">
+                <i class="fas fa-play-circle mr-2"></i>Watch Video for 50 PTS
+            </button>
+            <p id="bonus-video-status" class="text-[10px] text-slate-500 mt-3">တစ်နေ့တစ်ကြိမ်သာ ရယူနိုင်ပါသည်။</p>
+            <button onclick="showSec('sec-home')" class="w-full text-slate-500 mt-4 py-3">← Back to Home</button>
+        </div>
+    </div>
+
+    <!-- History Section -->
+    <div id="sec-history" class="section space-y-5">
+        <div class="gold-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center">
+                    <i class="fas fa-history text-2xl text-blue-400"></i>
+                </div>
+                <h3 class="text-white font-bold text-xl">Activity History</h3>
+            </div>
+            <div id="history-activity-log" class="space-y-2 max-h-96 overflow-y-auto"></div>
+            <button onclick="showSec('sec-home')" class="w-full text-slate-500 mt-4 py-3">← Back to Home</button>
+        </div>
+    </div>
+
     <!-- Quiz Section -->
     <div id="sec-quiz" class="section space-y-5">
         <div class="gold-card p-6 text-center">
@@ -242,10 +293,14 @@
                 </div>
             </div>
             <div class="ref-container">
-                <div id="ref-link" class="ref-link-text mb-3">Loading...</div>
-                <div class="ref-buttons">
-                    <button class="copy-btn" onclick="copyRef()"><i class="fas fa-copy mr-1"></i> Copy</button>
-                    <button class="copy-btn" onclick="shareRef()"><i class="fas fa-share-alt mr-1"></i> Share</button>
+                <div id="ref-link" class="ref-link-text">Loading...</div>
+                <div class="flex gap-2 mt-2">
+                    <button id="copyRefBtn" class="copy-btn flex-1" onclick="copyRef()">
+                        <i class="fas fa-copy mr-1"></i> Copy
+                    </button>
+                    <button id="shareRefBtn" class="copy-btn flex-1" onclick="shareRef()">
+                        <i class="fas fa-share-alt mr-1"></i> Share
+                    </button>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4 mb-6">
@@ -275,7 +330,6 @@
                 <div class="flex justify-between p-3 bg-slate-800/50 rounded-xl"><span class="text-slate-500">Total Earned:</span><span id="profile-total" class="text-green-400 font-bold text-lg">0</span></div>
             </div>
         </div>
-        <div class="gold-card p-6"><h3 class="text-white font-bold text-lg mb-4"><i class="fas fa-history mr-2 text-amber-400"></i>Activity Log</h3><div id="user-activity-log" class="space-y-2 max-h-64 overflow-y-auto"></div></div>
         <div class="gold-card p-6"><h3 class="text-white font-bold text-lg mb-4"><i class="fas fa-history mr-2 text-amber-400"></i>Withdrawal History</h3><div id="user-withdrawal-history" class="space-y-2 max-h-64 overflow-y-auto"></div></div>
         <button onclick="showSec('sec-home')" class="w-full text-slate-500 mt-2 py-3">← Back to Home</button>
     </div>
@@ -314,6 +368,7 @@
                     <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Coin Runner ဂိမ်း (1 coin = 10 PTS, တစ်နေ့ 5 ပွဲသာ)</li>
                     <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>သူငယ်ချင်းဖိတ်ခေါ်ခြင်း (+500 PTS)</li>
                     <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>နေ့စဉ် Bonus (+100 PTS)</li>
+                    <li><i class="fas fa-check-circle text-green-500 mr-2 text-xs"></i>Bonus Video (+50 PTS)</li>
                 </ul>
             </div>
             <div class="p-5 bg-amber-900/20 rounded-2xl mt-4">
@@ -352,7 +407,7 @@
                         </div>
                     </div>
                     <div id="quiz-list" class="quiz-list mb-5"></div>
-                    <div class="overflow-x-auto mb-5"><table class="admin-table w-full"><thead><tr><th>User</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="admin-user-table"></tbody></td></div>
+                    <div class="overflow-x-auto mb-5"><table class="admin-table w-full"><thead><tr><th>User</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="admin-user-table"></tbody></table></div>
                     <div class="grid grid-cols-3 gap-2 mb-5"><input type="text" id="search-user" placeholder="User ID/Name" class="text-sm p-3"><input type="number" id="adjust-points" placeholder="Points" class="text-sm p-3"><select id="adjust-action" class="text-sm p-3"><option value="add">Add</option><option value="remove">Remove</option></select><button onclick="adjustUserPoints()" class="btn-yellow py-2 text-sm col-span-3 rounded-xl">Adjust Points</button></div>
                     <div id="admin-withdraw-list" class="space-y-3 max-h-60 overflow-y-auto"></div>
                 </div>
@@ -364,6 +419,7 @@
 
 <nav class="fixed bottom-0 w-full bg-[#0a0e1a]/95 backdrop-blur-sm border-t border-white/10 flex justify-around py-3 z-50">
     <button onclick="showSec('sec-home')" class="nav-btn flex flex-col items-center text-amber-500 nav-active py-1"><i class="fas fa-home text-xl"></i><span class="text-[9px] mt-0.5">Home</span></button>
+    <button onclick="showSec('sec-bonus')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-gift text-xl"></i><span class="text-[9px] mt-0.5">Bonus</span></button>
     <button onclick="showSec('sec-quiz')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-brain text-xl"></i><span class="text-[9px] mt-0.5">Quiz</span></button>
     <button onclick="showSec('sec-invite')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-user-plus text-xl"></i><span class="text-[9px] mt-0.5">Invite</span></button>
     <button onclick="showSec('sec-tasks')" class="nav-btn flex flex-col items-center text-slate-500 py-1"><i class="fas fa-tasks text-xl"></i><span class="text-[9px] mt-0.5">Tasks</span></button>
@@ -381,35 +437,13 @@
     const ADMIN_PASSWORD = "871033";
     const ADMIN_USER_IDS = ["6099430589"];
     
-    // RichInfo Ad Controller - Simplified
+    // RichInfo Ad Controller
     let tgAdsController = null;
-    let isAdReady = false;
     
-    function initRichInfoAds() {
-        try {
-            if (typeof window.TelegramAdsController !== 'undefined') {
-                tgAdsController = new window.TelegramAdsController();
-                tgAdsController.initialize({
-                    pubId: "1014061",
-                    appId: "7735",
-                });
-                isAdReady = true;
-                console.log("✅ RichInfo Ads initialized");
-            } else {
-                console.log("⚠️ Waiting for Ads...");
-                setTimeout(initRichInfoAds, 1000);
-            }
-        } catch(e) {
-            console.log("Ad init error:", e);
-            isAdReady = false;
-        }
-    }
-    
-    // Simple ad show function (works with any ad unit)
     function showRewardedAd(callback) {
-        if (tgAdsController && isAdReady) {
+        if (window.TelegramAdsController) {
             try {
-                tgAdsController.showRewardedAd({
+                window.TelegramAdsController.showRewardedAd({
                     onReward: () => {
                         console.log("🎉 Ad rewarded!");
                         if (callback) callback();
@@ -417,9 +451,6 @@
                     onError: (err) => {
                         console.log("Ad error:", err);
                         if (callback) callback();
-                    },
-                    onClose: () => {
-                        console.log("Ad closed");
                     }
                 });
             } catch(e) {
@@ -427,7 +458,7 @@
                 if (callback) callback();
             }
         } else {
-            console.log("Ad not ready, auto-reward");
+            console.log("Ad not ready");
             if (callback) callback();
         }
     }
@@ -456,9 +487,6 @@
     let lastGameDate = '';
     let isAdmin = false;
     let activityLog = [];
-    let pendingGameReward = 0;
-    let pendingQuizPoints = 0;
-    let pendingQuizId = null;
     
     let unsubscribeQuizzes = null;
     let unsubscribeTasks = null;
@@ -506,6 +534,7 @@
         activityLog.unshift(logEntry);
         if (activityLog.length > 50) activityLog.pop();
         renderActivityLog();
+        renderHistoryLog();
         if (window.firestore && userId) {
             try {
                 const userRef = window.fsDoc(window.firestore, 'users', userId);
@@ -516,6 +545,26 @@
     
     function renderActivityLog() {
         const container = document.getElementById('user-activity-log');
+        if (!container) return;
+        if (activityLog.length === 0) {
+            container.innerHTML = '<div class="text-center text-slate-500 py-4">No activity yet</div>';
+            return;
+        }
+        container.innerHTML = activityLog.map(log => `
+            <div class="activity-item">
+                <div class="flex justify-between items-center">
+                    <span class="${log.type === 'earn' ? 'text-green-400' : 'text-red-400'} font-bold">
+                        ${log.type === 'earn' ? '+ ' + log.amount + ' PTS' : '- ' + log.amount + ' PTS'}
+                    </span>
+                    <span class="text-amber-400 text-xs">${log.action}</span>
+                </div>
+                <div class="activity-time">${log.timestamp}</div>
+            </div>
+        `).join('');
+    }
+    
+    function renderHistoryLog() {
+        const container = document.getElementById('history-activity-log');
         if (!container) return;
         if (activityLog.length === 0) {
             container.innerHTML = '<div class="text-center text-slate-500 py-4">No activity yet</div>';
@@ -681,13 +730,34 @@
     function showSec(id) {
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-        const map = { 'sec-home':0, 'sec-quiz':1, 'sec-invite':2, 'sec-tasks':3, 'sec-about':4 };
+        const map = { 'sec-home':0, 'sec-bonus':1, 'sec-quiz':2, 'sec-invite':3, 'sec-tasks':4, 'sec-about':5 };
         document.querySelectorAll('.nav-btn').forEach((b,i) => { if(map[id]===i) b.classList.add('nav-active','text-amber-500'); else b.classList.remove('nav-active','text-amber-500'); });
-        if(id === 'sec-profile') { renderUserProfile(); renderUserWithdrawalHistory(); renderActivityLog(); }
+        if(id === 'sec-profile') { renderUserProfile(); renderUserWithdrawalHistory(); }
         if(id === 'sec-about') { renderAdminUserTable(); renderAdminWithdrawals(); renderQuizList(); renderAdminTaskList(); }
         if(id === 'sec-quiz') updateQuizCounterUI();
+        if(id === 'sec-history') renderHistoryLog();
     }
     
+    // ========== BONUS VIDEO ==========
+    async function claimBonusVideo() {
+        if (!currentUser) return;
+        const today = new Date().toDateString();
+        const lastBonusVideo = localStorage.getItem(`bonus_video_${userId}`);
+        if (lastBonusVideo === today) { 
+            showNotification("နောက်တစ်နေ့မှ ထပ်မံရယူနိုင်ပါသည်။"); 
+            return; 
+        }
+        showRewardedAd(async () => {
+            await addPointsOptimized(50, "Bonus Video Ad");
+            localStorage.setItem(`bonus_video_${userId}`, today);
+            showNotification("✅ +50 PTS from bonus video!");
+        });
+        const btn = document.getElementById('bonus-video-btn');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-play-circle mr-2"></i>Watch Video for 50 PTS'; btn.disabled = false; }, 5000);
+    }
+    
+    // ========== QUIZ FUNCTIONS ==========
     function renderQuiz() {
         const availableQuizzes = quizzesCache.filter(q => !completedQuizzes.includes(q.id));
         if (availableQuizzes.length > 0) {
@@ -724,19 +794,15 @@
             quizAttemptCount++;
             if (quizAttemptCount >= QUIZ_ATTEMPTS_BEFORE_AD) {
                 quizAttemptCount = 0;
-                pendingQuizPoints = currentQuiz.p;
-                pendingQuizId = currentQuiz.id;
                 showRewardedAd(async () => {
-                    await addPointsOptimized(pendingQuizPoints, "Quiz (Ad)");
-                    completedQuizzes.push(pendingQuizId);
+                    await addPointsOptimized(currentQuiz.p, "Quiz");
+                    completedQuizzes.push(currentQuiz.id);
                     totalQuizzesAnswered++;
                     await saveToFirebase();
                     renderQuiz();
                     updateQuizCounterUI();
-                    showNotification(`✅ Correct! +${pendingQuizPoints} PTS!`);
+                    showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
                     selectedChoice = null;
-                    pendingQuizPoints = 0;
-                    pendingQuizId = null;
                 });
             } else {
                 await addPointsOptimized(currentQuiz.p, "Quiz");
@@ -745,11 +811,11 @@
                 await saveToFirebase();
                 renderQuiz();
                 updateQuizCounterUI();
-                showNotification(`✅ Correct! +${currentQuiz.p} PTS!`);
+                showNotification(`✅ Correct! +${currentQuiz.p} PTS (Total: ${totalQuizzesAnswered})`);
                 selectedChoice = null;
             }
         } else {
-            showNotification("❌ Wrong answer!");
+            showNotification("❌ Wrong answer! Better luck next time!");
             renderQuiz();
             selectedChoice = null;
         }
@@ -843,6 +909,7 @@
                 updateGameRemainingUI();
                 updateQuizCounterUI();
                 renderActivityLog();
+                renderHistoryLog();
             }
         });
     }
@@ -897,8 +964,6 @@
             const today = new Date().toDateString();
             if (lastGameDate !== today) { gamesPlayedToday = 0; lastGameDate = today; await saveToFirebase(); }
             
-            initRichInfoAds();
-            
             setupQuizzesListener();
             setupTasksListener();
             setupLeaderboardListener();
@@ -911,6 +976,7 @@
             updateGameRemainingUI();
             updateQuizCounterUI();
             renderActivityLog();
+            renderHistoryLog();
             showNotification(`Welcome ${userName}! 🎉`);
             const tg = window.Telegram?.WebApp;
             if (tg) { tg.ready(); tg.expand(); }
@@ -1006,19 +1072,11 @@
         if(gameAnimationId) cancelAnimationFrame(gameAnimationId); 
         const earned = gameCoins * COIN_TO_POINTS;
         if(earned > 0) { 
-            pendingGameReward = earned;
             showRewardedAd(async () => {
-                await addPointsOptimized(pendingGameReward, "Coin Runner (Ad)");
-                gamesPlayedToday++; 
-                await saveToFirebase(); 
-                updateGameRemainingUI(); 
-                pendingGameReward = 0;
+                gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI(); await addPointsOptimized(earned, "Coin Runner");
             });
         } else {
-            // No coins earned, just increment game count
-            gamesPlayedToday++; 
-            await saveToFirebase(); 
-            updateGameRemainingUI();
+            gamesPlayedToday++; await saveToFirebase(); updateGameRemainingUI();
         }
         if(gameCoins>gameBest){ gameBest=gameCoins; localStorage.setItem('game_best',gameBest); document.getElementById('game-best').innerText=gameBest; } 
         const overlayStars = '⭐'.repeat(Math.min(5, Math.floor(gameCoins/20)));
@@ -1049,10 +1107,10 @@
         if(completedTasks.includes(id)){ showNotification("Already completed!"); return; } 
         showRewardedAd(async () => {
             completedTasks.push(id); 
-            await addPointsOptimized(50, "Task Video Ad (50 PTS)");
+            await addPointsOptimized(reward, "Task");
             await saveToFirebase(); 
             renderTasks(); 
-            showNotification("✅ +50 PTS from watching video ad!");
+            showNotification(`✅ +${reward} PTS!`);
         });
     }
     
@@ -1109,13 +1167,13 @@
         const lastBonus = localStorage.getItem(`daily_bonus_${userId}`);
         if (lastBonus === today) { alert("နောက်တစ်နေ့မှ ထပ်မံရယူနိုင်ပါသည်။"); return; }
         showRewardedAd(async () => {
-            await addPointsOptimized(100, "Daily Bonus (Ad)");
+            await addPointsOptimized(100, "Daily Bonus");
             localStorage.setItem(`daily_bonus_${userId}`, today);
             showNotification("✅ Daily bonus claimed! +100 PTS");
         });
         const btn = document.getElementById('daily-bonus-btn');
         btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        setTimeout(() => { btn.innerHTML = '<i class="fas fa-gift mr-2"></i>Claim Daily Bonus (+100 PTS)'; btn.disabled = false; }, 5000);
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-play-circle mr-2"></i>Claim Daily Bonus'; btn.disabled = false; }, 5000);
     }
     
     // ========== ADMIN FUNCTIONS ==========
