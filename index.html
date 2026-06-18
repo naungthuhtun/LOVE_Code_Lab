@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>MM GOLDEN - Telegram Mini App</title>
+    <title>MM GOLDEN - Web App</title>
     
     <!-- RichInfo Telegram Ad Network -->
     <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
@@ -114,6 +114,7 @@
         .activity-time { font-size: 9px; color: #6b7280; margin-top: 4px; }
         .btn-icon { width: 40px; height: 40px; background: rgba(0,0,0,0.3); border-radius: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .btn-icon:active { transform: scale(0.95); }
+        .cooldown-timer { background: #1e293b; padding: 8px 14px; border-radius: 30px; font-size: 12px; color: #fbbf24; border: 1px solid #fbbf24; display: inline-block; }
     </style>
 </head>
 <body>
@@ -125,9 +126,8 @@
 
 <div class="error-message hidden" id="errorMessage">
     <i class="fas fa-exclamation-triangle text-amber-400 text-3xl mb-3"></i>
-    <p class="text-white mb-2">⚠️ Please open this app from Telegram Bot!</p>
-    <p class="text-slate-400 text-xs">ကျေးဇူးပြု၍ Telegram Bot မှတစ်ဆင့် ဝင်ရောက်ပါ။</p>
-    <a href="https://t.me/MMGOLDEN_bot" target="_blank" class="btn-yellow inline-block mt-4 px-4 py-2 rounded-lg text-sm">Open @MMGOLDEN_bot</a>
+    <p class="text-white mb-2">⚠️ Please open this app from a browser!</p>
+    <p class="text-slate-400 text-xs">ကျေးဇူးပြု၍ ဘရောင်ဇာမှ ဝင်ရောက်ပါ။</p>
 </div>
 
 <div class="real-time-badge hidden" id="realtimeBadge">🔴 Real-time Updates Active</div>
@@ -164,7 +164,7 @@
 </div>
 
 <main class="max-w-md mx-auto pt-28 px-4" style="display: none;" id="mainContent">
-    <!-- Home Section (same as before) -->
+    <!-- Home Section -->
     <div id="sec-home" class="section active space-y-5">
         <div class="gold-card p-6 text-center">
             <div class="flex items-center justify-between mb-4">
@@ -177,7 +177,7 @@
                 </div>
             </div>
             <button id="daily-bonus-btn" onclick="claimDailyBonus()" class="w-full btn-yellow py-4 text-sm font-bold rounded-xl">
-                <i class="fas fa-play-circle mr-2"></i>Claim Daily Bonus
+                <i class="fas fa-play-circle mr-2"></i>Claim Daily Bonus (Watch Ad)
             </button>
             <p id="bonus-status" class="text-[10px] text-slate-500 mt-3">တစ်နေ့တစ်ကြိမ်သာ ရယူနိုင်ပါသည်။</p>
         </div>
@@ -401,20 +401,24 @@
     const BOT_USERNAME = "MMGOLDEN_bot";
     const ADMIN_PASSWORD = "871033";
     const ADMIN_USER_IDS = ["6099430589"];
-    const BOT_TOKEN = "8127304160:AAFuF38iFon6UpHB_mheY17Spp77OmpnziI"; // Add your bot token here
-    const ADMIN_CHAT_ID = "6099430589"; // Admin chat ID for notifications
+    const BOT_TOKEN = "8127304160:AAFuF38iFon6UpHB_mheY17Spp77OmpnziI";
+    const ADMIN_CHAT_ID = "6099430589";
+    
+    // NEW: Bonus Task cooldown
+    const BONUS_TASK_COOLDOWN = 100; // seconds
+    const BONUS_TASK_REWARD = 50;
     
     // Ad Unit IDs
     const DAILY_BONUS_AD_ID = "399125";
     const QUIZ_AD_ID = "399123";
     const GAME_AD_ID = "399124";
     const TASK_AD_ID = "399126";
+    const BONUS_TASK_AD_ID = "399127";
     
     // RichInfo Ad Controller
     let tgAdsController = null;
     let isAdReady = false;
     
-    // Initialize RichInfo Ads
     function initRichInfoAds() {
         try {
             if (typeof window.TelegramAdsController !== 'undefined') {
@@ -435,11 +439,9 @@
         }
     }
     
-    // Show Rewarded Ad with specific ad unit (can show multiple times)
     function showRewardedAd(adUnitId, callback) {
         if (tgAdsController && isAdReady) {
             try {
-                // Re-create controller if needed
                 if (!tgAdsController) {
                     tgAdsController = new window.TelegramAdsController();
                     tgAdsController.initialize({
@@ -468,7 +470,6 @@
         }
     }
     
-    // Send Telegram notification
     async function sendTelegramNotification(message) {
         if (!BOT_TOKEN) return;
         try {
@@ -502,7 +503,7 @@
     // ========== GLOBAL STATE ==========
     let currentUser = null;
     let userId = null;
-    let userName = '';
+    let userName = 'User';
     let balance = 0;
     let invitedFriends = [];
     let completedTasks = [];
@@ -513,6 +514,9 @@
     let lastGameDate = '';
     let isAdmin = false;
     let activityLog = [];
+    
+    // NEW: Bonus task cooldown state
+    let bonusTaskCooldownUntil = 0;
     
     let unsubscribeQuizzes = null;
     let unsubscribeTasks = null;
@@ -531,20 +535,18 @@
     let currentQuiz = null;
     let selectedChoice = null;
     
+    // NEW: Bonus task as a special task
+    let bonusTaskId = 'bonus_daily_task';
+    
     document.getElementById('realtimeBadge').classList.remove('hidden');
     
-    function checkTelegramWebApp() {
-        const tg = window.Telegram?.WebApp;
-        if (!tg || !tg.initDataUnsafe?.user) {
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('errorMessage').classList.remove('hidden');
-            return false;
-        }
+    function checkWebApp() {
+        // For web browser, always allow
         return true;
     }
     
     setTimeout(() => {
-        if (checkTelegramWebApp()) {
+        if (checkWebApp()) {
             const loading = document.getElementById('loadingOverlay');
             const mainContent = document.getElementById('mainContent');
             if(loading && mainContent) {
@@ -552,7 +554,7 @@
                 mainContent.style.display = 'block';
             }
         }
-    }, 1000);
+    }, 500);
     
     async function addActivityLog(action, amount, type) {
         const timestamp = new Date().toLocaleString();
@@ -628,6 +630,7 @@
                     gamesPlayedToday: gamesPlayedToday || 0,
                     lastGameDate: lastGameDate || '',
                     activityLog: activityLog || [],
+                    bonusTaskCooldown: bonusTaskCooldownUntil || 0,
                     lastActive: new Date().toLocaleString()
                 }, { merge: true });
                 
@@ -641,54 +644,54 @@
     }
     
     function getUserId() {
-        const tg = window.Telegram?.WebApp;
-        if (tg && tg.initDataUnsafe?.user) {
-            return tg.initDataUnsafe.user.id.toString();
+        // For web, use a generated ID or localStorage
+        let id = localStorage.getItem('mm_golden_user_id');
+        if (!id) {
+            id = 'web_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+            localStorage.setItem('mm_golden_user_id', id);
         }
-        return null;
+        return id;
     }
     
     function getUserName() {
-        const tg = window.Telegram?.WebApp;
-        if (tg && tg.initDataUnsafe?.user) {
-            const user = tg.initDataUnsafe.user;
-            let name = user.first_name || (user.username ? '@' + user.username : 'User');
-            if (user.last_name) name += ' ' + user.last_name;
-            return name;
+        let name = localStorage.getItem('mm_golden_user_name');
+        if (!name) {
+            name = 'User_' + Math.random().toString(36).substring(2, 6);
+            localStorage.setItem('mm_golden_user_name', name);
         }
-        return 'User';
+        return name;
     }
     
     function getStartParam() {
-        const tg = window.Telegram?.WebApp;
-        if (tg && tg.initDataUnsafe?.start_param) {
-            return tg.initDataUnsafe.start_param;
-        }
-        return null;
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('ref');
     }
     
     function copyRef() {
         const link = document.getElementById('ref-link').innerHTML;
-        navigator.clipboard.writeText(link);
-        showNotification("✅ Referral link copied!");
+        navigator.clipboard.writeText(link).then(() => {
+            showNotification("✅ Referral link copied!");
+        }).catch(() => {
+            // Fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = link;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+            showNotification("✅ Referral link copied!");
+        });
     }
     
     function shareRef() {
         const link = document.getElementById('ref-link').innerHTML;
-        if (window.Telegram?.WebApp) {
-            window.Telegram.WebApp.showPopup({
-                title: "📤 Share MM GOLDEN",
-                message: "Invite friends and earn 500 PTS each!\n\n" + link,
-                buttons: [{ type: "default", text: "📋 Copy Link", id: "copy" }]
-            }, (buttonId) => {
-                if (buttonId === "copy") {
-                    navigator.clipboard.writeText(link);
-                    showNotification("✅ Link copied! Share with friends!");
-                }
-            });
+        if (navigator.share) {
+            navigator.share({
+                title: "MM GOLDEN",
+                text: "Join MM GOLDEN and earn points! Use my referral: " + link,
+            }).catch(() => {});
         } else {
-            navigator.clipboard.writeText(link);
-            showNotification("✅ Link copied! Share with friends!");
+            copyRef();
         }
     }
     
@@ -905,6 +908,7 @@
                 gamesPlayedToday = data.gamesPlayedToday || 0;
                 lastGameDate = data.lastGameDate || '';
                 activityLog = data.activityLog || [];
+                bonusTaskCooldown = data.bonusTaskCooldown || 0;
                 if (currentUser) {
                     currentUser.balance = balance;
                     currentUser.totalEarned = data.totalEarned || 0;
@@ -917,6 +921,7 @@
                 updateQuizCounterUI();
                 renderActivityLog();
                 renderHistoryLog();
+                updateBonusTaskUI();
             }
         });
     }
@@ -935,10 +940,10 @@
     }
     
     async function initTelegramUser() {
-        if (!checkTelegramWebApp()) return;
+        if (!checkWebApp()) return;
         userId = getUserId();
         userName = getUserName();
-        document.getElementById('display-name').innerHTML = `<i class="fab fa-telegram mr-1"></i>${userName}`;
+        document.getElementById('display-name').innerHTML = `<i class="fas fa-user mr-1"></i>${userName}`;
         document.getElementById('profile-name').innerText = userName;
         document.getElementById('profile-user-id').innerText = userId;
         isAdmin = ADMIN_USER_IDS.includes(userId);
@@ -958,10 +963,12 @@
                 gamesPlayedToday = data.gamesPlayedToday || 0;
                 lastGameDate = data.lastGameDate || '';
                 activityLog = data.activityLog || [];
+                bonusTaskCooldown = data.bonusTaskCooldown || 0;
             } else {
                 currentUser = { id: userId, name: userName, balance: 0, totalEarned: 0 };
                 balance = 0;
                 activityLog = [];
+                bonusTaskCooldown = 0;
                 await saveToFirebase();
             }
             const startParam = getStartParam();
@@ -986,9 +993,8 @@
             updateQuizCounterUI();
             renderActivityLog();
             renderHistoryLog();
+            updateBonusTaskUI();
             showNotification(`Welcome ${userName}! 🎉`);
-            const tg = window.Telegram?.WebApp;
-            if (tg) { tg.ready(); tg.expand(); }
         } catch(error) {
             console.error("Firebase error:", error);
             showNotification("Firebase connection issue.");
@@ -1094,22 +1100,162 @@
         document.body.appendChild(overlay); 
     }
     
+    // ========== BONUS TASK (NEW) ==========
+    function updateBonusTaskUI() {
+        const now = Date.now() / 1000;
+        const remaining = Math.max(0, bonusTaskCooldownUntil - now);
+        const container = document.getElementById('task-list-display');
+        if (!container) return;
+        
+        // Find bonus task element
+        let bonusEl = document.getElementById('bonus-task-element');
+        const bonusCompleted = completedTasks.includes(bonusTaskId);
+        
+        if (!bonusEl) {
+            // Create bonus task element if not exists
+            const bonusHTML = `
+                <div id="bonus-task-element" class="gold-card p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-white"><i class="fas fa-star text-amber-400 mr-2"></i>Daily Bonus Task</h4>
+                            <p class="text-[10px] text-green-500">+${BONUS_TASK_REWARD} PTS</p>
+                            <p class="text-[10px] text-slate-400">Watch an ad to claim</p>
+                        </div>
+                        <button id="bonus-task-btn" onclick="claimBonusTask()" class="btn-yellow px-4 py-2 text-xs rounded-lg">
+                            <i class="fas fa-play mr-1"></i> Claim
+                        </button>
+                    </div>
+                    <div id="bonus-cooldown-display" class="mt-2 text-[10px] text-amber-400"></div>
+                </div>
+            `;
+            // Insert at top of task list
+            container.insertAdjacentHTML('afterbegin', bonusHTML);
+            bonusEl = document.getElementById('bonus-task-element');
+        }
+        
+        const btn = document.getElementById('bonus-task-btn');
+        const cooldownDisplay = document.getElementById('bonus-cooldown-display');
+        
+        if (bonusCompleted) {
+            btn.disabled = true;
+            btn.innerHTML = '✅ Completed';
+            if (cooldownDisplay) cooldownDisplay.textContent = 'Already claimed today!';
+            return;
+        }
+        
+        if (remaining > 0) {
+            btn.disabled = true;
+            const mins = Math.floor(remaining / 60);
+            const secs = Math.floor(remaining % 60);
+            btn.innerHTML = `⏳ ${mins}m ${secs}s`;
+            if (cooldownDisplay) cooldownDisplay.textContent = `⏱️ Wait ${Math.ceil(remaining)}s before next claim`;
+            // Update every second
+            if (!window._bonusTimer) {
+                window._bonusTimer = setInterval(() => {
+                    updateBonusTaskUI();
+                }, 1000);
+            }
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play mr-1"></i> Claim';
+            if (cooldownDisplay) cooldownDisplay.textContent = '🎯 Ready to claim!';
+            if (window._bonusTimer) {
+                clearInterval(window._bonusTimer);
+                window._bonusTimer = null;
+            }
+        }
+    }
+    
+    async function claimBonusTask() {
+        if (completedTasks.includes(bonusTaskId)) {
+            showNotification("Already completed today!");
+            return;
+        }
+        
+        const now = Date.now() / 1000;
+        if (now < bonusTaskCooldownUntil) {
+            const remaining = Math.ceil(bonusTaskCooldownUntil - now);
+            showNotification(`⏳ Please wait ${remaining} seconds!`);
+            return;
+        }
+        
+        // Show ad then reward
+        showRewardedAd(BONUS_TASK_AD_ID, async () => {
+            // Complete the task
+            completedTasks.push(bonusTaskId);
+            await addPointsOptimized(BONUS_TASK_REWARD, "Bonus Task");
+            
+            // Set cooldown
+            bonusTaskCooldownUntil = Date.now() / 1000 + BONUS_TASK_COOLDOWN;
+            await saveToFirebase();
+            
+            // Update UI
+            renderTasks();
+            updateBonusTaskUI();
+            showNotification(`✅ +${BONUS_TASK_REWARD} PTS from Bonus Task!`);
+        });
+    }
+    
+    // Override renderTasks to include bonus task
+    const originalRenderTasks = renderTasks;
+    renderTasks = function() {
+        originalRenderTasks();
+        updateBonusTaskUI();
+    };
+    
+    // ========== TASK FUNCTIONS ==========
     function renderTasks() { 
         const c=document.getElementById('task-list-display'); if(!c)return; 
-        if(tasksCache.length===0){ c.innerHTML='<div class="gold-card p-6 text-center text-slate-500">No tasks yet</div>'; return; } 
+        // Keep bonus task at top (it's inserted via updateBonusTaskUI)
+        // Remove all tasks except bonus
+        const bonusEl = document.getElementById('bonus-task-element');
+        const existingTasks = c.querySelectorAll('.gold-card:not(#bonus-task-element)');
+        existingTasks.forEach(el => el.remove());
+        
+        if(tasksCache.length===0){ 
+            // Only show bonus if no tasks
+            if (!bonusEl) {
+                c.innerHTML = '<div class="gold-card p-6 text-center text-slate-500">No tasks available</div>';
+            }
+            return; 
+        } 
+        
         const typeIcons = { link: "🔗", video: "🎬", telegram: "📱" };
-        const availableTasks = tasksCache.filter(t => !completedTasks.includes(t.id));
+        const availableTasks = tasksCache.filter(t => !completedTasks.includes(t.id) && t.id !== bonusTaskId);
+        
+        let html = '';
         if(availableTasks.length === 0){
-            c.innerHTML='<div class="gold-card p-6 text-center text-green-400">✅ All tasks completed!</div>';
+            html = '<div class="gold-card p-6 text-center text-green-400">✅ All tasks completed!</div>';
         } else {
-            c.innerHTML=availableTasks.map(t=>`<div class="gold-card p-4"><div class="flex justify-between items-start"><div><h4 class="font-bold text-white">${typeIcons[t.type] || '🔗'} ${t.title}</h4><p class="text-[10px] text-green-500">+${t.reward} PTS</p></div><button onclick="completeTask('${t.id}',${t.reward})" class="btn-yellow px-4 py-2 text-xs rounded-lg">DO TASK</button></div><a href="${t.link}" target="_blank" class="text-[10px] text-amber-400 break-all block mt-2">${t.link.substring(0,45)}...</a></div>`).join('');
+            html = availableTasks.map(t => `
+                <div class="gold-card p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-white">${typeIcons[t.type] || '🔗'} ${t.title}</h4>
+                            <p class="text-[10px] text-green-500">+${t.reward} PTS</p>
+                        </div>
+                        <button onclick="completeTask('${t.id}',${t.reward})" class="btn-yellow px-4 py-2 text-xs rounded-lg">DO TASK</button>
+                    </div>
+                    <a href="${t.link}" target="_blank" class="text-[10px] text-amber-400 break-all block mt-2">${t.link.substring(0,45)}...</a>
+                </div>
+            `).join('');
         }
+        
+        // Insert after bonus task
+        if (bonusEl) {
+            c.insertAdjacentHTML('beforeend', html);
+        } else {
+            c.innerHTML = html;
+        }
+        
         const completedContainer = document.getElementById('completed-tasks-list');
         if (completedContainer) {
-            const completedTaskItems = completedTasks.filter(taskId => tasksCache.some(t => t.id === taskId));
+            const completedTaskItems = completedTasks.filter(taskId => tasksCache.some(t => t.id === taskId) && taskId !== bonusTaskId);
             if (completedTaskItems.length === 0) { completedContainer.innerHTML = '<div class="text-center text-slate-500 py-3">ပြီးဆုံးပြီး Task မရှိသေးပါ</div>'; }
             else { completedContainer.innerHTML = completedTaskItems.map(taskId => { const task = tasksCache.find(t => t.id === taskId); return task ? `<div class="completed-task-item"><i class="fas fa-check-circle text-green-400 mr-2"></i>${task.title} <span class="text-green-400 float-right">+${task.reward} PTS</span></div>` : ''; }).join(''); }
         }
+        
+        updateBonusTaskUI();
     }
     
     async function completeTask(id,reward){ 
@@ -1125,7 +1271,7 @@
     
     function renderRefUI() { 
         if(!userId) return;
-        const inviteLink = `https://t.me/${BOT_USERNAME}?start=${userId}`;
+        const inviteLink = window.location.href.split('?')[0] + '?ref=' + userId;
         document.getElementById('ref-link').innerHTML = inviteLink; 
         document.getElementById('ref-count').innerText = invitedFriends.length; 
         document.getElementById('ref-earned').innerText = (invitedFriends.length * REFERRAL_POINTS).toLocaleString(); 
@@ -1167,7 +1313,6 @@
         });
         balance -= amount; await saveToFirebase(); updateBalanceUI(); 
         
-        // Send notification to admin
         await sendTelegramNotification(`🆕 New Withdrawal Request!\n\n👤 User: ${userName}\n🆔 ID: ${userId}\n💰 Amount: ${amount.toLocaleString()} PTS ($${usdAmount})\n📱 Method: ${selectedMethod === 'kapy' ? 'KPay' : 'Wave'}\n📞 Phone: ${phone}\n🏦 Name: ${name}`);
         
         alert("✅ Withdrawal request submitted! Admin will review it.");
@@ -1187,7 +1332,7 @@
         });
         const btn = document.getElementById('daily-bonus-btn');
         btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        setTimeout(() => { btn.innerHTML = '<i class="fas fa-play-circle mr-2"></i>Claim Daily Bonus'; btn.disabled = false; }, 5000);
+        setTimeout(() => { btn.innerHTML = '<i class="fas fa-play-circle mr-2"></i>Claim Daily Bonus (Watch Ad)'; btn.disabled = false; }, 5000);
     }
     
     // ========== ADMIN FUNCTIONS ==========
@@ -1290,10 +1435,7 @@
         try {
             const withdrawalRef = window.fsDoc(window.firestore, 'withdrawals', id);
             await window.fsUpdateDoc(withdrawalRef, { status: 'approved' });
-            
-            // Send notification to user via bot (if user started the bot)
             await sendTelegramNotification(`✅ Your withdrawal request of ${amount.toLocaleString()} PTS has been approved!`);
-            
             showNotification("Withdrawal approved!");
             renderAdminWithdrawals();
         } catch(e) { console.error(e); }
@@ -1305,9 +1447,7 @@
         try {
             const withdrawalRef = window.fsDoc(window.firestore, 'withdrawals', id);
             await window.fsUpdateDoc(withdrawalRef, { status: 'rejected' });
-            
             await sendTelegramNotification(`❌ Your withdrawal request has been rejected. Please contact support.`);
-            
             showNotification("Withdrawal rejected!");
             renderAdminWithdrawals();
         } catch(e) { console.error(e); }
