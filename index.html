@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>777 Big WIN</title>
+    <title>777 Big WIN -</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -16,6 +16,7 @@
         .neon-text-big { color: #c084fc; text-shadow: 0 0 10px rgba(192, 132, 252, 0.6), 0 0 30px rgba(192, 132, 252, 0.3); animation: subtleShake 3s ease-in-out infinite; }
         .panel-glow { box-shadow: 0 0 25px rgba(59, 130, 246, 0.15); }
         .user-row:hover { background: rgba(255,255,255,0.03); }
+        .search-highlight { background: rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 0 4px; }
     </style>
 </head>
 <body class="text-gray-100 min-h-screen flex items-center justify-center p-4">
@@ -178,14 +179,25 @@
                 </div>
 
                 <div id="adminContentArea" class="hidden space-y-4">
+                    <!-- 🔍 SEARCH BAR - ID ရှာဖွေရန် -->
+                    <div class="bg-gray-950 p-3 border border-gray-800 rounded-xl">
+                        <div class="flex gap-2">
+                            <input type="text" id="searchUserId" placeholder="🔍 Search User ID..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+                            <button onclick="searchAndApproveUser()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold rounded-lg text-white transition-all whitespace-nowrap">
+                                🔍 FIND & APPROVE
+                            </button>
+                        </div>
+                        <div id="searchResult" class="mt-2 text-xs text-gray-400 min-h-[20px]"></div>
+                    </div>
+
                     <div class="bg-gray-950 p-4 border border-gray-800 rounded-2xl">
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">🌐 CENTRALIZED USER DATABASE</span>
                             <span id="userCount" class="text-[10px] text-gray-500">Total: 0 users</span>
                         </div>
-                        <div class="overflow-x-auto text-[11px]">
+                        <div class="overflow-x-auto text-[11px] max-h-[300px] overflow-y-auto">
                             <table class="w-full text-left border-collapse">
-                                <thead>
+                                <thead class="sticky top-0 bg-gray-950">
                                     <tr class="border-b border-gray-800 text-gray-500 text-[10px] uppercase">
                                         <th class="pb-2 font-semibold">USER ID</th>
                                         <th class="pb-2 font-semibold text-center">LOCKOUT</th>
@@ -208,7 +220,6 @@
         // CENTRALIZED DATABASE SYSTEM (No Firebase)
         // ============================================================
         
-        // Get or initialize the global database
         function getDB() {
             let db = localStorage.getItem('central_user_db');
             if (!db) {
@@ -225,14 +236,12 @@
 
         function saveDB(db) {
             localStorage.setItem('central_user_db', JSON.stringify(db));
-            // Trigger real-time update for all open tabs
             window.dispatchEvent(new StorageEvent('storage', {
                 key: 'central_user_db',
                 newValue: JSON.stringify(db)
             }));
         }
 
-        // Add or update a user
         function registerUser(deviceId) {
             let db = getDB();
             if (!db[deviceId]) {
@@ -247,6 +256,79 @@
         }
 
         // ============================================================
+        // 🔍 SEARCH & APPROVE FUNCTION
+        // ============================================================
+        function searchAndApproveUser() {
+            const searchInput = document.getElementById('searchUserId');
+            const searchResult = document.getElementById('searchResult');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                searchResult.innerHTML = '⚠️ Please enter a User ID to search';
+                searchResult.className = 'mt-2 text-xs text-amber-400';
+                return;
+            }
+
+            const db = getDB();
+            const keys = Object.keys(db);
+            
+            // Case-insensitive search
+            const found = keys.filter(id => id.toLowerCase().includes(query.toLowerCase()));
+            
+            if (found.length === 0) {
+                searchResult.innerHTML = `❌ No user found matching "<strong>${query}</strong>"`;
+                searchResult.className = 'mt-2 text-xs text-rose-400';
+                return;
+            }
+
+            if (found.length === 1) {
+                const userId = found[0];
+                const user = db[userId];
+                const isApproved = user.approved;
+                
+                if (isApproved) {
+                    searchResult.innerHTML = `✅ User <strong>${userId}</strong> is already <span class="text-emerald-400">APPROVED</span>`;
+                    searchResult.className = 'mt-2 text-xs text-emerald-400';
+                } else {
+                    // Auto-approve the user
+                    window.setAccessStatusForUser(userId, true);
+                    searchResult.innerHTML = `✅ User <strong>${userId}</strong> has been <span class="text-emerald-400">APPROVED</span> successfully!`;
+                    searchResult.className = 'mt-2 text-xs text-emerald-400';
+                    searchInput.value = '';
+                    renderDBTable();
+                }
+            } else {
+                // Multiple matches found - show list
+                let html = `🔍 Found <strong>${found.length}</strong> users matching "<strong>${query}</strong>":<br>`;
+                found.forEach(id => {
+                    const isApproved = db[id].approved;
+                    html += `<span class="inline-block px-2 py-0.5 m-0.5 bg-gray-800 rounded text-[10px] ${isApproved ? 'text-emerald-400' : 'text-amber-400'}">${id} ${isApproved ? '✅' : '⏳'}</span>`;
+                });
+                html += `<br><span class="text-gray-500 text-[10px]">Click specific user from table below to approve</span>`;
+                searchResult.innerHTML = html;
+                searchResult.className = 'mt-2 text-xs text-blue-400';
+                
+                // Scroll to table and highlight matches
+                const table = document.querySelector('#dbTableBody');
+                if (table) {
+                    table.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        // Enter key support for search
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchUserId');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchAndApproveUser();
+                    }
+                });
+            }
+        });
+
+        // ============================================================
         // SYSTEM IDENTIFICATION
         // ============================================================
         let deviceID = localStorage.getItem('app_device_id');
@@ -257,7 +339,6 @@
         window.deviceID = deviceID;
         document.getElementById('displayDeviceID').innerText = deviceID;
 
-        // Register current device if not exists
         registerUser(deviceID);
 
         // ============================================================
@@ -278,7 +359,7 @@
         }
 
         // ============================================================
-        // ADMIN FUNCTIONS (Anyone with password 871033)
+        // ADMIN FUNCTIONS
         // ============================================================
         window.setAccessStatusForUser = function(targetId, status) {
             let db = getDB();
@@ -287,7 +368,6 @@
                 saveDB(db);
                 alert(`✅ User ${targetId} access changed to: ${status ? 'APPROVED' : 'REVOKED'}`);
                 
-                // If admin changed their own status
                 if (targetId === deviceID) {
                     enforceAccessControl();
                 }
@@ -317,6 +397,9 @@
             el.classList.toggle('hidden');
             if (!el.classList.contains('hidden')) {
                 renderDBTable();
+                // Clear search result when opening
+                document.getElementById('searchResult').innerHTML = '';
+                document.getElementById('searchResult').className = 'mt-2 text-xs text-gray-400';
             }
         }
 
@@ -334,6 +417,8 @@
                 document.getElementById('adminAuthForm').classList.add('hidden');
                 document.getElementById('adminContentArea').classList.remove('hidden');
                 renderDBTable();
+                document.getElementById('searchResult').innerHTML = '🔍 Enter User ID to search and auto-approve';
+                document.getElementById('searchResult').className = 'mt-2 text-xs text-gray-400';
             } else {
                 alert("❌ INVALID DECRYPTION CREDENTIALS");
             }
@@ -360,10 +445,13 @@
 
             if (userCount) userCount.textContent = `Total: ${keys.length} users`;
 
-            // Sort: show current device first, then others
+            // Sort: show current device first, then pending, then approved
             keys.sort((a, b) => {
                 if (a === deviceID) return -1;
                 if (b === deviceID) return 1;
+                if (db[a].approved !== db[b].approved) {
+                    return db[a].approved ? 1 : -1;
+                }
                 return a.localeCompare(b);
             });
 
@@ -377,9 +465,9 @@
                 row.className = "border-b border-gray-950 hover:bg-gray-855/50 user-row";
                 row.innerHTML = `
                     <td class="py-2.5 font-mono text-[11px]">
-                        <div class="${isApproved ? 'text-emerald-400 font-bold' : 'text-gray-400'}">${id}</div>
+                        <div class="${isApproved ? 'text-emerald-400 font-bold' : 'text-amber-400'}">${id}</div>
                         ${isCurrent ? '<span class="text-[9px] text-blue-500 font-bold">⬅️ YOU</span>' : ''}
-                        ${!isApproved && !isCurrent ? '<span class="text-[9px] text-rose-500 ml-1">⛔ PENDING</span>' : ''}
+                        ${!isApproved && !isCurrent ? '<span class="text-[9px] text-amber-500 ml-1">⏳ PENDING</span>' : ''}
                     </td>
                     <td class="py-2.5 text-center">
                         <span class="px-1.5 py-0.5 rounded text-[9px] font-black tracking-wide ${isLocked ? 'bg-red-500/20 text-red-400 border border-red-500/20' : 'bg-gray-855 text-gray-600'}">
@@ -551,7 +639,6 @@
             document.getElementById('gameStatusText').innerText = "Please select a number above";
             document.getElementById('gameStatusText').className = "text-sm font-bold tracking-wide text-gray-500";
 
-            // Reset lock in database
             let db = getDB();
             if (db[deviceID]) {
                 db[deviceID].lockedUntil = 0;
@@ -560,15 +647,13 @@
         }
 
         // ============================================================
-        // LISTEN FOR DATABASE CHANGES (Cross-tab sync)
+        // LISTEN FOR DATABASE CHANGES
         // ============================================================
         window.addEventListener('storage', (e) => {
             if (e.key === 'central_user_db') {
-                // Update table if admin panel is open
                 if (!document.getElementById('settingsModal').classList.contains('hidden')) {
                     renderDBTable();
                 }
-                // Re-check access control
                 enforceAccessControl();
             }
         });
@@ -578,7 +663,6 @@
         // ============================================================
         enforceAccessControl();
 
-        // Render table if admin panel was already open on load
         if (!document.getElementById('settingsModal').classList.contains('hidden')) {
             renderDBTable();
         }
@@ -596,6 +680,7 @@
         window.toggleModal = toggleModal;
         window.switchSettingsSection = switchSettingsSection;
         window.copyDeviceID = copyDeviceID;
+        window.searchAndApproveUser = searchAndApproveUser;
         window.setAccessStatusForUser = window.setAccessStatusForUser;
     </script>
 </body>
